@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
 import {
   Select,
   SelectContent,
@@ -37,12 +38,33 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge variant={variant}>{status}</Badge>
 }
 
+function getStatusBorderClass(status: string) {
+  switch (status.toLowerCase()) {
+    case 'active':
+    case 'actief':
+      return 'border-green-500'
+    case 'in_repair':
+    case 'in reparatie':
+      return 'border-orange-500'
+    case 'inactive':
+    case 'inactief':
+    case 'retired':
+    case 'defect':
+      return 'border-red-500'
+    default:
+      return 'border-orange-500'
+  }
+}
+
 function HardwareCard({ item }: { item: Hardware }) {
   const navigate = useNavigate()
+  const price = item.price != null
+    ? new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(item.price)
+    : null
 
   return (
-    <Card className="p-3">
-      <CardContent className="flex flex-col gap-1.5 p-0 text-xs">
+    <Card className={cn('flex flex-col p-3', getStatusBorderClass(item.device_status))}>
+      <CardContent className="flex flex-1 flex-col gap-1.5 p-0 text-xs">
         <div className="flex items-center justify-between gap-2">
           <span className="truncate font-mono text-sm font-medium">{item.asset_id}</span>
           <StatusBadge status={item.device_status} />
@@ -53,9 +75,10 @@ function HardwareCard({ item }: { item: Hardware }) {
           {item.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{item.location}</span>}
           {item.purchase_date && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(item.purchase_date).toLocaleDateString('nl-NL')}</span>}
         </div>
-        <Separator className="mt-1" />
+        <Separator className="mt-auto" />
         <div className="flex items-center justify-between gap-2">
           <p className="truncate text-muted-foreground">S/N: {item.serial_numbers?.join(', ') ?? '-'}</p>
+          {price && <span className="shrink-0 font-medium text-foreground">{price}</span>}
           <Button
             variant="ghost"
             size="icon"
