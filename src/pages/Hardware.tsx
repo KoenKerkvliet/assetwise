@@ -4,7 +4,6 @@ import { Search, MapPin, Calendar, Tag, Pencil } from 'lucide-react'
 import { useHardware } from '@/hooks/useHardware'
 import type { Hardware } from '@/types/database'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -16,27 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-
-function StatusBadge({ status }: { status: string }) {
-  const variant = (() => {
-    switch (status.toLowerCase()) {
-      case 'active':
-      case 'actief':
-        return 'default' as const
-      case 'in_repair':
-      case 'in reparatie':
-        return 'secondary' as const
-      case 'inactive':
-      case 'inactief':
-      case 'retired':
-        return 'outline' as const
-      default:
-        return 'secondary' as const
-    }
-  })()
-
-  return <Badge variant={variant}>{status}</Badge>
-}
 
 function getStatusBorderClass(status: string) {
   switch (status.toLowerCase()) {
@@ -63,15 +41,24 @@ function HardwareCard({ item }: { item: Hardware }) {
     : null
 
   return (
-    <Card className={cn('flex flex-col p-3', getStatusBorderClass(item.device_status))}>
-      <CardContent className="flex flex-1 flex-col gap-1.5 p-0 text-xs">
+    <Card className={cn('flex flex-col overflow-hidden p-0', getStatusBorderClass(item.device_status))}>
+      <div className="flex items-center justify-between bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+        <span className="truncate">{item.device_type}</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-5 w-5 shrink-0"
+          onClick={() => navigate(`/hardware/${item.id}`)}
+        >
+          <Pencil className="h-3 w-3" />
+        </Button>
+      </div>
+      <CardContent className="flex flex-1 flex-col gap-1.5 p-3 pt-2 text-xs">
         <div className="flex items-center justify-between gap-2">
           <span className="truncate font-mono text-sm font-medium">{item.asset_id}</span>
-          <StatusBadge status={item.device_status} />
         </div>
-        <p className="truncate text-muted-foreground">{item.brand ?? item.device_type}</p>
+        <p className="truncate text-muted-foreground">{item.brand ?? '-'}</p>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
-          <span className="flex items-center gap-1"><Tag className="h-3 w-3" />{item.device_type}</span>
           {item.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{item.location}</span>}
           {item.purchase_date && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(item.purchase_date).toLocaleDateString('nl-NL')}</span>}
         </div>
@@ -79,14 +66,6 @@ function HardwareCard({ item }: { item: Hardware }) {
         <div className="flex items-center justify-between gap-2">
           <p className="truncate text-muted-foreground">S/N: {item.serial_numbers?.join(', ') ?? '-'}</p>
           {price && <span className="shrink-0 font-medium text-foreground">{price}</span>}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 shrink-0"
-            onClick={() => navigate(`/hardware/${item.id}`)}
-          >
-            <Pencil className="h-3 w-3" />
-          </Button>
         </div>
       </CardContent>
     </Card>
