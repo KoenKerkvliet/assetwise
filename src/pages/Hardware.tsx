@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, MapPin, Calendar, Tag, Pencil } from 'lucide-react'
+import { Search, MapPin, Calendar, Pencil } from 'lucide-react'
 import { useHardware } from '@/hooks/useHardware'
 import type { Hardware } from '@/types/database'
 import { Input } from '@/components/ui/input'
