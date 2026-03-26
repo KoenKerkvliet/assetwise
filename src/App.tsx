@@ -6,6 +6,8 @@ import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import Hardware from '@/pages/Hardware'
 import HardwareDetail from '@/pages/HardwareDetail'
+import Settings from '@/pages/Settings'
+import Depreciation from '@/pages/Depreciation'
 
 export default function App() {
   return (
@@ -23,6 +25,8 @@ export default function App() {
             <Route index element={<Dashboard />} />
             <Route path="hardware" element={<Hardware />} />
             <Route path="hardware/:id" element={<HardwareDetail />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="depreciation" element={<Depreciation />} />
           </Route>
         </Routes>
       </AuthProvider>
