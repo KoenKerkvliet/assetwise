@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react'
-import { Search, MapPin, Calendar, Tag } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Search, MapPin, Calendar, Tag, Pencil } from 'lucide-react'
 import { useHardware } from '@/hooks/useHardware'
 import type { Hardware } from '@/types/database'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 import {
   Select,
   SelectContent,
@@ -35,6 +38,8 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function HardwareCard({ item }: { item: Hardware }) {
+  const navigate = useNavigate()
+
   return (
     <Card className="p-3">
       <CardContent className="flex flex-col gap-1.5 p-0 text-xs">
@@ -47,6 +52,18 @@ function HardwareCard({ item }: { item: Hardware }) {
           <span className="flex items-center gap-1"><Tag className="h-3 w-3" />{item.device_type}</span>
           {item.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{item.location}</span>}
           {item.purchase_date && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(item.purchase_date).toLocaleDateString('nl-NL')}</span>}
+        </div>
+        <Separator className="mt-1" />
+        <div className="flex items-center justify-between gap-2">
+          <p className="truncate text-muted-foreground">S/N: {item.serial_numbers?.join(', ') ?? '-'}</p>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 shrink-0"
+            onClick={() => navigate(`/hardware/${item.id}`)}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
         </div>
       </CardContent>
     </Card>
