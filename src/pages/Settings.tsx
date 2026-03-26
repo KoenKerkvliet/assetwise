@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Save, Plus, Trash2, Pencil, X, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -8,19 +8,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Separator } from '@/components/ui/separator'
 
 function GeneralSettings() {
   const { user } = useAuth()
-  const [name, setName] = useState('')
+  const [name, setName] = useState(user?.user_metadata?.full_name ?? '')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-
-  useEffect(() => {
-    setName(user?.user_metadata?.full_name ?? '')
-  }, [user])
 
   const handleSaveName = async (e: FormEvent) => {
     e.preventDefault()
@@ -132,7 +127,9 @@ function DeviceTypesSettings() {
     setLoading(false)
   }
 
-  useEffect(() => { fetchTypes() }, [])
+  if (loading && types.length === 0) {
+    fetchTypes()
+  }
 
   const startEdit = (t: HardwareType) => {
     setEditingId(t.id)

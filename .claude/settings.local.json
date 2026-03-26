@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest add button input card table badge select separator avatar tooltip label -y)",
+      "Bash(npx tsc:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npx vite:*)",
+      "Bash(mkdir -p src/components/ui)",
+      "Bash(cp \"@/components/ui/\"*.tsx src/components/ui/)",
+      "Bash(rm -rf \"@\")",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(where vite:*)",
+      "Bash(where npx:*)",
+      "Bash(ls node_modules/.bin/vite*)",
+      "Bash(curl -s \"https://ufhcdgqulajjkxbhalmm.supabase.co/rest/v1/hardware?select=price&price=not.is.null&limit=5\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmaGNkZ3F1bGFqamt4YmhhbG1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMTczMzUsImV4cCI6MjA3MDY5MzMzNX0.kz6soHBA9nlCJ661xVaTjFRMyrFcjPvx2vpitbk6ke0\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmaGNkZ3F1bGFqamt4YmhhbG1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMTczMzUsImV4cCI6MjA3MDY5MzMzNX0.kz6soHBA9nlCJ661xVaTjFRMyrFcjPvx2vpitbk6ke0\" -H \"Prefer: count=exact\" -I)",
+      "Bash(curl -s \"https://ufhcdgqulajjkxbhalmm.supabase.co/rest/v1/hardware?select=price&price=not.is.null&limit=5\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmaGNkZ3F1bGFqamt4YmhhbG1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMTczMzUsImV4cCI6MjA3MDY5MzMzNX0.kz6soHBA9nlCJ661xVaTjFRMyrFcjPvx2vpitbk6ke0\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmaGNkZ3F1bGFqamt4YmhhbG1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMTczMzUsImV4cCI6MjA3MDY5MzMzNX0.kz6soHBA9nlCJ661xVaTjFRMyrFcjPvx2vpitbk6ke0\")",
+      "Bash(curl -s \"https://ufhcdgqulajjkxbhalmm.supabase.co/rest/v1/hardware?select=asset_id,price&price=not.is.null&limit=5\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmaGNkZ3F1bGFqamt4YmhhbG1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMTczMzUsImV4cCI6MjA3MDY5MzMzNX0.kz6soHBA9nlCJ661xVaTjFRMyrFcjPvx2vpitbk6ke0\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmaGNkZ3F1bGFqamt4YmhhbG1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMTczMzUsImV4cCI6MjA3MDY5MzMzNX0.kz6soHBA9nlCJ661xVaTjFRMyrFcjPvx2vpitbk6ke0\")",
+      "Bash(curl -s \"https://ufhcdgqulajjkxbhalmm.supabase.co/rest/v1/hardware?select=asset_id,price&limit=5&order=asset_id.desc\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmaGNkZ3F1bGFqamt4YmhhbG1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMTczMzUsImV4cCI6MjA3MDY5MzMzNX0.kz6soHBA9nlCJ661xVaTjFRMyrFcjPvx2vpitbk6ke0\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmaGNkZ3F1bGFqamt4YmhhbG1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMTczMzUsImV4cCI6MjA3MDY5MzMzNX0.kz6soHBA9nlCJ661xVaTjFRMyrFcjPvx2vpitbk6ke0\")",
+      "Bash(curl -s \"https://ufhcdgqulajjkxbhalmm.supabase.co/rest/v1/hardware?select=asset_id,price&asset_id=eq.00174\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmaGNkZ3F1bGFqamt4YmhhbG1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMTczMzUsImV4cCI6MjA3MDY5MzMzNX0.kz6soHBA9nlCJ661xVaTjFRMyrFcjPvx2vpitbk6ke0\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmaGNkZ3F1bGFqamt4YmhhbG1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMTczMzUsImV4cCI6MjA3MDY5MzMzNX0.kz6soHBA9nlCJ661xVaTjFRMyrFcjPvx2vpitbk6ke0\")"
+    ]
+  }
+}
