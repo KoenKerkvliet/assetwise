@@ -36,8 +36,9 @@ function getStatusBorderClass(status: string) {
 
 function HardwareCard({ item }: { item: Hardware }) {
   const navigate = useNavigate()
-  const price = item.price != null
-    ? new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(item.price)
+  const priceNum = item.price != null ? Number(item.price) : null
+  const price = priceNum != null && !isNaN(priceNum)
+    ? new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(priceNum)
     : null
 
   return (
