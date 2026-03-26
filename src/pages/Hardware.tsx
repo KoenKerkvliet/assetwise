@@ -1,21 +1,11 @@
 import { useMemo, useState } from 'react'
-import {
-  useReactTable,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
-  flexRender,
-  type ColumnDef,
-  type SortingState,
-  type ColumnFiltersState,
-} from '@tanstack/react-table'
-import { ArrowUpDown, Search } from 'lucide-react'
+import { Search, MapPin, Calendar, Tag } from 'lucide-react'
 import { useHardware } from '@/hooks/useHardware'
 import type { Hardware } from '@/types/database'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -23,14 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+
+const PAGE_SIZE = 24
 
 function StatusBadge({ status }: { status: string }) {
   const variant = (() => {
@@ -53,11 +37,58 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge variant={variant}>{status}</Badge>
 }
 
+function HardwareCard({ item }: { item: Hardware }) {
+  const price = item.price != null
+    ? new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(item.price)
+    : null
+  const date = item.purchase_date
+    ? new Date(item.purchase_date).toLocaleDateString('nl-NL')
+    : null
+
+  return (
+    <Card className="flex flex-col">
+      <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
+        <div className="min-w-0">
+          <p className="truncate font-mono text-sm font-medium">{item.asset_id}</p>
+          <p className="truncate text-sm text-muted-foreground">
+            {item.brand ?? item.device_type}
+          </p>
+        </div>
+        <StatusBadge status={item.device_status} />
+      </CardHeader>
+      <CardContent className="flex flex-1 flex-col gap-2 pt-0 text-sm">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Tag className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{item.device_type}</span>
+        </div>
+        {item.location && (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{item.location}</span>
+          </div>
+        )}
+        {date && (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Calendar className="h-3.5 w-3.5 shrink-0" />
+            <span>{date}</span>
+          </div>
+        )}
+        <div className="mt-auto pt-2 text-xs text-muted-foreground">
+          <p className="truncate">S/N: {item.serial_numbers?.join(', ') ?? '-'}</p>
+          {price && <p className="mt-1 font-medium text-foreground">{price}</p>}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function HardwarePage() {
   const { data, loading, error } = useHardware()
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [locationFilter, setLocationFilter] = useState('all')
+  const [page, setPage] = useState(0)
 
   const uniqueTypes = useMemo(() => [...new Set(data.map(h => h.device_type))].sort(), [data])
   const uniqueStatuses = useMemo(() => [...new Set(data.map(h => h.device_status))].sort(), [data])
@@ -66,105 +97,32 @@ export default function HardwarePage() {
     [data]
   )
 
-  const columns = useMemo<ColumnDef<Hardware>[]>(
-    () => [
-      {
-        accessorKey: 'asset_id',
-        header: ({ column }) => (
-          <Button variant="ghost" size="sm" onClick={() => column.toggleSorting()}>
-            Asset ID <ArrowUpDown className="ml-1 h-3 w-3" />
-          </Button>
-        ),
-        cell: ({ getValue }) => (
-          <span className="font-mono text-sm">{getValue<string>()}</span>
-        ),
-      },
-      {
-        accessorKey: 'serial_numbers',
-        header: 'Serienummer(s)',
-        cell: ({ getValue }) => {
-          const serials = getValue<string[]>()
-          return serials?.join(', ') ?? '-'
-        },
-        enableSorting: false,
-      },
-      {
-        accessorKey: 'device_type',
-        header: ({ column }) => (
-          <Button variant="ghost" size="sm" onClick={() => column.toggleSorting()}>
-            Type <ArrowUpDown className="ml-1 h-3 w-3" />
-          </Button>
-        ),
-        filterFn: 'equals',
-      },
-      {
-        accessorKey: 'brand',
-        header: ({ column }) => (
-          <Button variant="ghost" size="sm" onClick={() => column.toggleSorting()}>
-            Merk <ArrowUpDown className="ml-1 h-3 w-3" />
-          </Button>
-        ),
-        cell: ({ getValue }) => getValue<string>() ?? '-',
-      },
-      {
-        accessorKey: 'device_status',
-        header: 'Status',
-        cell: ({ getValue }) => <StatusBadge status={getValue<string>()} />,
-        filterFn: 'equals',
-      },
-      {
-        accessorKey: 'location',
-        header: ({ column }) => (
-          <Button variant="ghost" size="sm" onClick={() => column.toggleSorting()}>
-            Locatie <ArrowUpDown className="ml-1 h-3 w-3" />
-          </Button>
-        ),
-        cell: ({ getValue }) => getValue<string>() ?? '-',
-        filterFn: 'equals',
-      },
-      {
-        accessorKey: 'purchase_date',
-        header: ({ column }) => (
-          <Button variant="ghost" size="sm" onClick={() => column.toggleSorting()}>
-            Aanschafdatum <ArrowUpDown className="ml-1 h-3 w-3" />
-          </Button>
-        ),
-        cell: ({ getValue }) => {
-          const date = getValue<string>()
-          return date ? new Date(date).toLocaleDateString('nl-NL') : '-'
-        },
-      },
-      {
-        accessorKey: 'price',
-        header: ({ column }) => (
-          <Button variant="ghost" size="sm" onClick={() => column.toggleSorting()}>
-            Prijs <ArrowUpDown className="ml-1 h-3 w-3" />
-          </Button>
-        ),
-        cell: ({ getValue }) => {
-          const price = getValue<number>()
-          return price != null
-            ? new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(price)
-            : '-'
-        },
-      },
-    ],
-    []
-  )
+  const filtered = useMemo(() => {
+    let result = data
+    if (globalFilter) {
+      const q = globalFilter.toLowerCase()
+      result = result.filter(h =>
+        h.asset_id.toLowerCase().includes(q) ||
+        h.serial_numbers?.some(s => s.toLowerCase().includes(q)) ||
+        h.device_type.toLowerCase().includes(q) ||
+        h.brand?.toLowerCase().includes(q) ||
+        h.location?.toLowerCase().includes(q)
+      )
+    }
+    if (typeFilter !== 'all') result = result.filter(h => h.device_type === typeFilter)
+    if (statusFilter !== 'all') result = result.filter(h => h.device_status === statusFilter)
+    if (locationFilter !== 'all') result = result.filter(h => h.location === locationFilter)
+    return result
+  }, [data, globalFilter, typeFilter, statusFilter, locationFilter])
 
-  const table = useReactTable({
-    data,
-    columns,
-    state: { sorting, columnFilters, globalFilter },
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    onGlobalFilterChange: setGlobalFilter,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 25 } },
-  })
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+
+  // Reset page when filters change
+  const setFilterAndReset = (setter: (v: string) => void) => (v: string) => {
+    setter(v)
+    setPage(0)
+  }
 
   if (error) {
     return <p className="text-destructive">Fout bij laden: {error}</p>
@@ -172,27 +130,22 @@ export default function HardwarePage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold tracking-tight">Hardware</h1>
+      <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Hardware</h1>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="relative sm:col-span-2 lg:col-span-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Zoeken..."
             value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
+            onChange={(e) => { setGlobalFilter(e.target.value); setPage(0) }}
             className="pl-9"
           />
         </div>
 
-        <Select
-          value={(table.getColumn('device_type')?.getFilterValue() as string) ?? 'all'}
-          onValueChange={(v) =>
-            table.getColumn('device_type')?.setFilterValue(v === 'all' ? undefined : v)
-          }
-        >
-          <SelectTrigger className="w-[160px]">
+        <Select value={typeFilter} onValueChange={setFilterAndReset(setTypeFilter)}>
+          <SelectTrigger>
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
@@ -203,13 +156,8 @@ export default function HardwarePage() {
           </SelectContent>
         </Select>
 
-        <Select
-          value={(table.getColumn('device_status')?.getFilterValue() as string) ?? 'all'}
-          onValueChange={(v) =>
-            table.getColumn('device_status')?.setFilterValue(v === 'all' ? undefined : v)
-          }
-        >
-          <SelectTrigger className="w-[160px]">
+        <Select value={statusFilter} onValueChange={setFilterAndReset(setStatusFilter)}>
+          <SelectTrigger>
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -220,13 +168,8 @@ export default function HardwarePage() {
           </SelectContent>
         </Select>
 
-        <Select
-          value={(table.getColumn('location')?.getFilterValue() as string) ?? 'all'}
-          onValueChange={(v) =>
-            table.getColumn('location')?.setFilterValue(v === 'all' ? undefined : v)
-          }
-        >
-          <SelectTrigger className="w-[160px]">
+        <Select value={locationFilter} onValueChange={setFilterAndReset(setLocationFilter)}>
+          <SelectTrigger>
             <SelectValue placeholder="Locatie" />
           </SelectTrigger>
           <SelectContent>
@@ -238,73 +181,41 @@ export default function HardwarePage() {
         </Select>
       </div>
 
-      {/* Table */}
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  Laden...
-                </TableCell>
-              </TableRow>
-            ) : table.getRowModel().rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  Geen resultaten gevonden.
-                </TableCell>
-              </TableRow>
-            ) : (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      {/* Cards grid */}
+      {loading ? (
+        <p className="py-12 text-center text-muted-foreground">Laden...</p>
+      ) : paged.length === 0 ? (
+        <p className="py-12 text-center text-muted-foreground">Geen resultaten gevonden.</p>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {paged.map((item) => (
+            <HardwareCard key={item.id} item={item} />
+          ))}
+        </div>
+      )}
 
       {/* Pagination */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
         <p className="text-sm text-muted-foreground">
-          {table.getFilteredRowModel().rows.length} item(s)
+          {filtered.length} item(s)
         </p>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
+            onClick={() => setPage(p => p - 1)}
+            disabled={page === 0}
           >
             Vorige
           </Button>
           <span className="text-sm text-muted-foreground">
-            Pagina {table.getState().pagination.pageIndex + 1} van{' '}
-            {table.getPageCount()}
+            {page + 1} / {pageCount}
           </span>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
+            onClick={() => setPage(p => p + 1)}
+            disabled={page >= pageCount - 1}
           >
             Volgende
           </Button>
