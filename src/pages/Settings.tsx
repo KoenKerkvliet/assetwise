@@ -109,6 +109,66 @@ function GeneralSettings() {
   )
 }
 
+/** Convert total months to { years, months } */
+function monthsToYM(total: number) {
+  return { years: Math.floor(total / 12), months: total % 12 }
+}
+
+/** Convert { years, months } to total months */
+function ymToMonths(years: number, months: number) {
+  return years * 12 + months
+}
+
+function DepreciationInput({
+  label,
+  totalMonths,
+  onChange,
+}: {
+  label: string
+  totalMonths: number
+  onChange: (months: number) => void
+}) {
+  const { years, months } = monthsToYM(totalMonths)
+
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs">{label}</Label>
+      <div className="flex gap-2">
+        <div className="flex-1">
+          <div className="relative">
+            <Input
+              type="number"
+              min={0}
+              value={years}
+              onChange={(e) => onChange(ymToMonths(parseInt(e.target.value) || 0, months))}
+              className="pr-10"
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+              jaar
+            </span>
+          </div>
+        </div>
+        <div className="flex-1">
+          <div className="relative">
+            <Input
+              type="number"
+              min={0}
+              max={11}
+              value={months}
+              onChange={(e) => onChange(ymToMonths(years, parseInt(e.target.value) || 0))}
+              className="pr-12"
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+              mnd
+            </span>
+          </div>
+        </div>
+      </div>
+      <p className="text-[10px] text-muted-foreground">{totalMonths} maanden totaal</p>
+    </div>
+  )
+}
+
 function DeviceTypesSettings() {
   const { user } = useAuth()
   const [types, setTypes] = useState<HardwareType[]>([])
@@ -173,6 +233,14 @@ function DeviceTypesSettings() {
     fetchTypes()
   }
 
+  const formatPeriod = (months: number) => {
+    const y = Math.floor(months / 12)
+    const m = months % 12
+    if (y > 0 && m > 0) return `${y} jaar, ${m} mnd`
+    if (y > 0) return `${y} jaar`
+    return `${m} mnd`
+  }
+
   if (loading) return <p className="text-muted-foreground">Laden...</p>
 
   return (
@@ -187,22 +255,24 @@ function DeviceTypesSettings() {
       {showNew && (
         <Card>
           <CardContent className="pt-4">
-            <form onSubmit={addType} className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+            <form onSubmit={addType} className="space-y-3">
               <div className="space-y-1">
                 <Label className="text-xs">Naam</Label>
                 <Input value={newForm.type} onChange={(e) => setNewForm({ ...newForm, type: e.target.value })} placeholder="bijv. Laptop" />
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Afschrijving (mnd)</Label>
-                <Input type="number" value={newForm.depreciation_period} onChange={(e) => setNewForm({ ...newForm, depreciation_period: parseInt(e.target.value) || 0 })} />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <DepreciationInput
+                  label="Afschrijvingsperiode"
+                  totalMonths={newForm.depreciation_period}
+                  onChange={(v) => setNewForm({ ...newForm, depreciation_period: v })}
+                />
+                <DepreciationInput
+                  label="Garantieperiode"
+                  totalMonths={newForm.warranty_period}
+                  onChange={(v) => setNewForm({ ...newForm, warranty_period: v })}
+                />
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Garantie (mnd)</Label>
-                <Input type="number" value={newForm.warranty_period} onChange={(e) => setNewForm({ ...newForm, warranty_period: parseInt(e.target.value) || 0 })} />
-              </div>
-              <div className="flex items-end">
-                <Button type="submit" size="sm" className="w-full"><Plus className="mr-2 h-4 w-4" />Toevoegen</Button>
-              </div>
+              <Button type="submit" size="sm"><Plus className="mr-2 h-4 w-4" />Toevoegen</Button>
             </form>
           </CardContent>
         </Card>
@@ -213,13 +283,26 @@ function DeviceTypesSettings() {
           <Card key={t.id} className="p-3">
             <CardContent className="p-0">
               {editingId === t.id ? (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-                  <Input value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value })} />
-                  <Input type="number" value={editForm.depreciation_period} onChange={(e) => setEditForm({ ...editForm, depreciation_period: parseInt(e.target.value) || 0 })} />
-                  <Input type="number" value={editForm.warranty_period} onChange={(e) => setEditForm({ ...editForm, warranty_period: parseInt(e.target.value) || 0 })} />
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Naam</Label>
+                    <Input value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value })} />
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <DepreciationInput
+                      label="Afschrijvingsperiode"
+                      totalMonths={editForm.depreciation_period}
+                      onChange={(v) => setEditForm({ ...editForm, depreciation_period: v })}
+                    />
+                    <DepreciationInput
+                      label="Garantieperiode"
+                      totalMonths={editForm.warranty_period}
+                      onChange={(v) => setEditForm({ ...editForm, warranty_period: v })}
+                    />
+                  </div>
                   <div className="flex gap-2">
-                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={saveEdit}><Check className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditingId(null)}><X className="h-4 w-4" /></Button>
+                    <Button size="sm" variant="outline" onClick={saveEdit}><Check className="mr-1 h-4 w-4" />Opslaan</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}><X className="mr-1 h-4 w-4" />Annuleren</Button>
                   </div>
                 </div>
               ) : (
@@ -227,8 +310,8 @@ function DeviceTypesSettings() {
                   <div className="min-w-0">
                     <p className="text-sm font-medium">{t.type}</p>
                     <p className="text-xs text-muted-foreground">
-                      Afschrijving: {t.depreciation_period} mnd
-                      {t.warranty_period ? ` · Garantie: ${t.warranty_period} mnd` : ''}
+                      Afschrijving: {formatPeriod(t.depreciation_period)}
+                      {t.warranty_period ? ` · Garantie: ${formatPeriod(t.warranty_period)}` : ''}
                     </p>
                   </div>
                   <div className="flex shrink-0 gap-1">
