@@ -35,18 +35,36 @@ function calcResidualValue(
   return Math.round(priceNum * fraction * 100) / 100
 }
 
-export function useHardware() {
+/**
+ * Fetch hardware filtered by status field.
+ * @param statusFilter – 'active' (default), 'archived', 'deleted', or 'all'
+ */
+export function useHardware(statusFilter: string = 'active') {
   const [data, setData] = useState<HardwareWithIncidents[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  const refresh = () => setRefreshKey((k) => k + 1)
 
   useEffect(() => {
+    let cancelled = false
+
     async function fetchHardware() {
+      setLoading(true)
+
+      let hwQuery = supabase.from('hardware').select('*').order('created_at', { ascending: false })
+      if (statusFilter !== 'all') {
+        hwQuery = hwQuery.eq('status', statusFilter)
+      }
+
       const [hwRes, actionsRes, typesRes] = await Promise.all([
-        supabase.from('hardware').select('*').order('created_at', { ascending: false }),
+        hwQuery,
         supabase.from('hardware_actions').select('hardware_id, action_type, status'),
         supabase.from('hardware_types').select('type, depreciation_period'),
       ])
+
+      if (cancelled) return
 
       if (hwRes.error) {
         setError(hwRes.error.message)
@@ -90,7 +108,9 @@ export function useHardware() {
       setLoading(false)
     }
     fetchHardware()
-  }, [])
 
-  return { data, loading, error }
+    return () => { cancelled = true }
+  }, [statusFilter, refreshKey])
+
+  return { data, loading, error, refresh }
 }

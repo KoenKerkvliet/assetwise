@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, MapPin, Calendar, Pencil } from 'lucide-react'
+import { Search, MapPin, Calendar, Pencil, Archive, Trash2, CheckSquare, X } from 'lucide-react'
 import { useHardware, type HardwareWithIncidents } from '@/hooks/useHardware'
+import { supabase } from '@/lib/supabase'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -18,12 +19,10 @@ import {
 const RED_INCIDENT_TYPES = new Set(['reparatie', 'defect'])
 
 function getCardBorderClass(item: HardwareWithIncidents) {
-  // Open incidents take priority over device status
   if (item.worstOpenIncidentType) {
     if (RED_INCIDENT_TYPES.has(item.worstOpenIncidentType)) return 'border-red-500'
-    return 'border-orange-500' // storing, melding, overig
+    return 'border-orange-500'
   }
-  // Fallback to device status
   switch (item.device_status?.toLowerCase()) {
     case 'active':
     case 'actief':
@@ -44,23 +43,50 @@ function getCardBorderClass(item: HardwareWithIncidents) {
 const fmt = (v: number) =>
   new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(v)
 
-function HardwareCard({ item }: { item: HardwareWithIncidents }) {
+interface HardwareCardProps {
+  item: HardwareWithIncidents
+  selectMode: boolean
+  selected: boolean
+  onToggle: (id: string) => void
+}
+
+function HardwareCard({ item, selectMode, selected, onToggle }: HardwareCardProps) {
   const navigate = useNavigate()
   const priceNum = item.price != null ? Number(item.price) : null
   const hasPrice = priceNum != null && !isNaN(priceNum)
 
   return (
-    <Card className={cn('flex flex-col overflow-hidden p-0', getCardBorderClass(item))}>
+    <Card
+      className={cn(
+        'flex flex-col overflow-hidden p-0 transition-shadow',
+        getCardBorderClass(item),
+        selectMode && 'cursor-pointer',
+        selected && 'ring-2 ring-primary shadow-md'
+      )}
+      onClick={selectMode ? () => onToggle(item.id) : undefined}
+    >
       <div className="flex items-center justify-between bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground">
-        <span className="truncate">{item.device_type}</span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-5 w-5 shrink-0"
-          onClick={() => navigate(`/hardware/${item.id}`)}
-        >
-          <Pencil className="h-3 w-3" />
-        </Button>
+        <span className="flex items-center gap-2 truncate">
+          {selectMode && (
+            <span className={cn(
+              'flex h-4 w-4 items-center justify-center rounded border',
+              selected ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/40'
+            )}>
+              {selected && <CheckSquare className="h-3 w-3" />}
+            </span>
+          )}
+          {item.device_type}
+        </span>
+        {!selectMode && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5 shrink-0"
+            onClick={() => navigate(`/hardware/${item.id}`)}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+        )}
       </div>
       <CardContent className="flex flex-1 flex-col gap-1 px-3 py-1.5 text-xs">
         <span className="truncate font-mono text-sm font-medium leading-tight">{item.asset_id}</span>
@@ -91,11 +117,51 @@ function HardwareCard({ item }: { item: HardwareWithIncidents }) {
 }
 
 export default function HardwarePage() {
-  const { data, loading, error } = useHardware()
+  const { data, loading, error, refresh } = useHardware('active')
   const [globalFilter, setGlobalFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [locationFilter, setLocationFilter] = useState('all')
+
+  // Multi-select
+  const [selectMode, setSelectMode] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [confirmAction, setConfirmAction] = useState<'archive' | 'delete' | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const exitSelectMode = () => {
+    setSelectMode(false)
+    setSelected(new Set())
+    setConfirmAction(null)
+  }
+
+  const performAction = async (action: 'archive' | 'delete') => {
+    if (selected.size === 0) return
+    setActionLoading(true)
+
+    const newStatus = action === 'archive' ? 'archived' : 'deleted'
+    const ids = [...selected]
+
+    const { error: err } = await supabase
+      .from('hardware')
+      .update({ status: newStatus })
+      .in('id', ids)
+
+    setActionLoading(false)
+    if (!err) {
+      exitSelectMode()
+      refresh()
+    }
+  }
 
   const uniqueTypes = useMemo(() => [...new Set(data.map(h => h.device_type))].sort(), [data])
   const uniqueStatuses = useMemo(() => [...new Set(data.map(h => h.device_status))].sort(), [data])
@@ -122,13 +188,85 @@ export default function HardwarePage() {
     return result
   }, [data, globalFilter, typeFilter, statusFilter, locationFilter])
 
+  const selectAll = () => {
+    if (selected.size === filtered.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(filtered.map((h) => h.id)))
+    }
+  }
+
   if (error) {
     return <p className="text-destructive">Fout bij laden: {error}</p>
   }
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Hardware</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Hardware</h1>
+        <Button
+          variant={selectMode ? 'secondary' : 'outline'}
+          size="sm"
+          onClick={selectMode ? exitSelectMode : () => setSelectMode(true)}
+        >
+          {selectMode ? <><X className="mr-1 h-4 w-4" /> Annuleren</> : <><CheckSquare className="mr-1 h-4 w-4" /> Selecteren</>}
+        </Button>
+      </div>
+
+      {/* Selection action bar */}
+      {selectMode && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/30 px-3 py-2">
+          <Button variant="outline" size="sm" onClick={selectAll}>
+            {selected.size === filtered.length ? 'Deselecteer alles' : 'Selecteer alles'}
+          </Button>
+          <span className="text-sm text-muted-foreground">{selected.size} geselecteerd</span>
+          <div className="ml-auto flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={selected.size === 0}
+              onClick={() => setConfirmAction('archive')}
+            >
+              <Archive className="mr-1 h-4 w-4" /> Archiveren
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={selected.size === 0}
+              onClick={() => setConfirmAction('delete')}
+            >
+              <Trash2 className="mr-1 h-4 w-4" /> Verwijderen
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation dialog */}
+      {confirmAction && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-medium">
+            Weet je zeker dat je {selected.size} item(s) wilt {confirmAction === 'archive' ? 'archiveren' : 'verwijderen'}?
+          </p>
+          <p className="mb-3 text-xs text-muted-foreground">
+            {confirmAction === 'archive'
+              ? 'Gearchiveerde items kun je terugvinden en herstellen via Archief.'
+              : 'Verwijderde items kun je terugvinden via Prullenbak en daar definitief verwijderen of herstellen.'}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant={confirmAction === 'delete' ? 'destructive' : 'default'}
+              disabled={actionLoading}
+              onClick={() => performAction(confirmAction)}
+            >
+              {actionLoading ? 'Bezig...' : confirmAction === 'archive' ? 'Ja, archiveren' : 'Ja, verwijderen'}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setConfirmAction(null)}>
+              Annuleren
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -143,9 +281,7 @@ export default function HardwarePage() {
         </div>
 
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="Type" />
-          </SelectTrigger>
+          <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Alle types</SelectItem>
             {uniqueTypes.map((t) => (
@@ -155,9 +291,7 @@ export default function HardwarePage() {
         </Select>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
+          <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Alle statussen</SelectItem>
             {uniqueStatuses.map((s) => (
@@ -167,9 +301,7 @@ export default function HardwarePage() {
         </Select>
 
         <Select value={locationFilter} onValueChange={setLocationFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="Locatie" />
-          </SelectTrigger>
+          <SelectTrigger><SelectValue placeholder="Locatie" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Alle locaties</SelectItem>
             {uniqueLocations.map((l) => (
@@ -187,7 +319,13 @@ export default function HardwarePage() {
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((item) => (
-            <HardwareCard key={item.id} item={item} />
+            <HardwareCard
+              key={item.id}
+              item={item}
+              selectMode={selectMode}
+              selected={selected.has(item.id)}
+              onToggle={toggleSelect}
+            />
           ))}
         </div>
       )}

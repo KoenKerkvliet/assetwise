@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Monitor, TrendingDown, AlertTriangle, Settings, LogOut, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Monitor, TrendingDown, AlertTriangle, Archive, Trash2, Settings, LogOut, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
@@ -11,6 +11,11 @@ const navItems = [
   { to: '/hardware', label: 'Hardware', icon: Monitor },
   { to: '/incidents', label: 'Incidenten', icon: AlertTriangle },
   { to: '/depreciation', label: 'Afschrijvingen', icon: TrendingDown },
+]
+
+const secondaryItems = [
+  { to: '/archive', label: 'Archief', icon: Archive },
+  { to: '/deleted', label: 'Prullenbak', icon: Trash2 },
 ]
 
 export function Sidebar() {
@@ -52,6 +57,15 @@ export function Sidebar() {
         <nav className="flex-1 space-y-1 p-3">
           {navItems.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.to === '/'} className={linkClass} onClick={close}>
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </NavLink>
+          ))}
+
+          <Separator className="my-2" />
+
+          {secondaryItems.map((item) => (
+            <NavLink key={item.to} to={item.to} className={linkClass} onClick={close}>
               <item.icon className="h-4 w-4" />
               {item.label}
             </NavLink>

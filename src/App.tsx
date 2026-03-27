@@ -9,6 +9,8 @@ import HardwareDetail from '@/pages/HardwareDetail'
 import Settings from '@/pages/Settings'
 import Depreciation from '@/pages/Depreciation'
 import Incidents from '@/pages/Incidents'
+import HardwareArchive from '@/pages/HardwareArchive'
+import HardwareDeleted from '@/pages/HardwareDeleted'
 
 export default function App() {
   return (
@@ -27,6 +29,8 @@ export default function App() {
             <Route path="hardware" element={<Hardware />} />
             <Route path="hardware/:id" element={<HardwareDetail />} />
             <Route path="incidents" element={<Incidents />} />
+            <Route path="archive" element={<HardwareArchive />} />
+            <Route path="deleted" element={<HardwareDeleted />} />
             <Route path="settings" element={<Settings />} />
             <Route path="depreciation" element={<Depreciation />} />
           </Route>
