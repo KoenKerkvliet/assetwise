@@ -210,91 +210,48 @@ export default function DepreciationPage() {
               </button>
 
               {effectiveExpanded.has(year) && (
-                <div className="mt-2 space-y-1">
-                  {/* Header row - hidden on mobile */}
-                  <div className="hidden grid-cols-12 gap-2 px-3 py-1 text-xs font-medium text-muted-foreground sm:grid">
-                    <div className="col-span-2">Asset ID</div>
-                    <div className="col-span-2">Type</div>
-                    <div className="col-span-2">Merk</div>
-                    <div className="col-span-2">Aangeschaft</div>
-                    <div className="col-span-2">Afgeschreven</div>
-                    <div className="col-span-2">Status</div>
-                  </div>
-
-                  {items.map((item) => {
-                    const deprecated = isDepreciated(item)
-                    return (
-                      <Card
-                        key={item.device.id}
-                        className={`border-l-4 ${deprecated ? 'border-l-red-400' : 'border-l-green-400'}`}
-                      >
-                        <CardContent className="p-3">
-                          {/* Desktop */}
-                          <div className="hidden grid-cols-12 items-center gap-2 sm:grid">
-                            <div className="col-span-2">
-                              <p className="text-sm font-medium">{item.device.asset_id}</p>
-                            </div>
-                            <div className="col-span-2">
-                              <p className="text-sm">{item.typeName}</p>
-                            </div>
-                            <div className="col-span-2">
-                              <p className="text-sm text-muted-foreground">{item.device.brand ?? '—'}</p>
-                            </div>
-                            <div className="col-span-2">
-                              <p className="text-sm text-muted-foreground">
-                                {new Date(item.device.purchase_date!).toLocaleDateString('nl-NL', {
-                                  day: '2-digit', month: '2-digit', year: 'numeric',
-                                })}
-                              </p>
-                            </div>
-                            <div className="col-span-2">
-                              <p className="text-sm font-medium">
-                                {formatDate(item.depreciationDate)}
-                              </p>
-                            </div>
-                            <div className="col-span-2">
-                              <span
-                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                                  deprecated
-                                    ? 'bg-red-100 text-red-700'
-                                    : 'bg-green-100 text-green-700'
-                                }`}
-                              >
-                                {deprecated ? 'Afgeschreven' : 'Lopend'}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Mobile */}
-                          <div className="space-y-1 sm:hidden">
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm font-medium">{item.device.asset_id}</p>
-                              <span
-                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                                  deprecated
-                                    ? 'bg-red-100 text-red-700'
-                                    : 'bg-green-100 text-green-700'
-                                }`}
-                              >
-                                {deprecated ? 'Afgeschreven' : 'Lopend'}
-                              </span>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              {item.typeName} · {item.device.brand ?? '—'}
-                            </p>
-                            <div className="flex justify-between text-xs text-muted-foreground">
-                              <span>Aangeschaft: {new Date(item.device.purchase_date!).toLocaleDateString('nl-NL', {
+                <div className="mt-1 overflow-x-auto rounded-md border">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
+                        <th className="w-3 p-0" />
+                        <th className="px-3 py-2 text-left font-medium">Asset ID</th>
+                        <th className="hidden px-3 py-2 text-left font-medium sm:table-cell">Type</th>
+                        <th className="hidden px-3 py-2 text-left font-medium sm:table-cell">Merk</th>
+                        <th className="px-3 py-2 text-left font-medium">Aangeschaft</th>
+                        <th className="px-3 py-2 text-left font-medium">Afgeschreven</th>
+                        <th className="px-3 py-2 text-left font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((item) => {
+                        const deprecated = isDepreciated(item)
+                        return (
+                          <tr key={item.device.id} className="border-b last:border-b-0 hover:bg-muted/20">
+                            <td className={`w-1 p-0 ${deprecated ? 'bg-red-400' : 'bg-green-400'}`} />
+                            <td className="px-3 py-1.5 font-medium">{item.device.asset_id}</td>
+                            <td className="hidden px-3 py-1.5 sm:table-cell">{item.typeName}</td>
+                            <td className="hidden px-3 py-1.5 text-muted-foreground sm:table-cell">{item.device.brand ?? '—'}</td>
+                            <td className="px-3 py-1.5 text-muted-foreground">
+                              {new Date(item.device.purchase_date!).toLocaleDateString('nl-NL', {
                                 day: '2-digit', month: '2-digit', year: 'numeric',
-                              })}</span>
-                              <span className="font-medium text-foreground">
-                                Afschr: {formatDate(item.depreciationDate)}
+                              })}
+                            </td>
+                            <td className="px-3 py-1.5 font-medium">{formatDate(item.depreciationDate)}</td>
+                            <td className="px-3 py-1.5">
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                  deprecated ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                                }`}
+                              >
+                                {deprecated ? 'Afgeschreven' : 'Lopend'}
                               </span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )
-                  })}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
