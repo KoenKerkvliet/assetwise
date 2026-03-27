@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, MapPin, Calendar, Pencil } from 'lucide-react'
-import { useHardware } from '@/hooks/useHardware'
-import type { Hardware } from '@/types/database'
+import { useHardware, type HardwareWithIncidents } from '@/hooks/useHardware'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -16,8 +15,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-function getStatusBorderClass(status: string) {
-  switch (status.toLowerCase()) {
+const RED_INCIDENT_TYPES = new Set(['reparatie', 'defect'])
+
+function getCardBorderClass(item: HardwareWithIncidents) {
+  // Open incidents take priority over device status
+  if (item.worstOpenIncidentType) {
+    if (RED_INCIDENT_TYPES.has(item.worstOpenIncidentType)) return 'border-red-500'
+    return 'border-orange-500' // storing, melding, overig
+  }
+  // Fallback to device status
+  switch (item.device_status?.toLowerCase()) {
     case 'active':
     case 'actief':
       return 'border-green-500'
@@ -30,11 +37,11 @@ function getStatusBorderClass(status: string) {
     case 'defect':
       return 'border-red-500'
     default:
-      return 'border-orange-500'
+      return 'border-green-500'
   }
 }
 
-function HardwareCard({ item }: { item: Hardware }) {
+function HardwareCard({ item }: { item: HardwareWithIncidents }) {
   const navigate = useNavigate()
   const priceNum = item.price != null ? Number(item.price) : null
   const price = priceNum != null && !isNaN(priceNum)
@@ -42,7 +49,7 @@ function HardwareCard({ item }: { item: Hardware }) {
     : null
 
   return (
-    <Card className={cn('flex flex-col overflow-hidden p-0', getStatusBorderClass(item.device_status))}>
+    <Card className={cn('flex flex-col overflow-hidden p-0', getCardBorderClass(item))}>
       <div className="flex items-center justify-between bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground">
         <span className="truncate">{item.device_type}</span>
         <Button
