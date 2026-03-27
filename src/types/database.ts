@@ -65,6 +65,12 @@ export interface HardwareLoan {
   updated_at: string
 }
 
+export interface DepreciationRate {
+  from_months: number
+  to_months: number | null  // null = onwards (e.g. 36+ months)
+  percentage: number         // recovery percentage 0-100
+}
+
 export interface Profile {
   id: string
   user_id: string
@@ -80,7 +86,7 @@ export interface Profile {
   payment_terms: number | null
   accent_color: string | null
   logo_url: string | null
-  depreciation_rates: unknown | null
+  depreciation_rates: DepreciationRate[] | null
   created_at: string
   updated_at: string
   vip_status: boolean
@@ -132,7 +138,7 @@ export interface Team {
   payment_terms: number | null
   accent_color: string | null
   logo_url: string | null
-  depreciation_rates: unknown | null
+  depreciation_rates: DepreciationRate[] | null
   invoice_number_prefix: string | null
   invoice_number_format: string | null
 }

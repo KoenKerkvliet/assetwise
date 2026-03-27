@@ -61,10 +61,8 @@ function HardwareCard({ item }: { item: HardwareWithIncidents }) {
           <Pencil className="h-3 w-3" />
         </Button>
       </div>
-      <CardContent className="flex flex-1 flex-col gap-1.5 p-3 pt-2 text-xs">
-        <div className="flex items-center justify-between gap-2">
-          <span className="truncate font-mono text-sm font-medium">{item.asset_id}</span>
-        </div>
+      <CardContent className="flex flex-1 flex-col gap-1 px-3 py-1.5 text-xs">
+        <span className="truncate font-mono text-sm font-medium leading-tight">{item.asset_id}</span>
         <p className="truncate text-muted-foreground">{item.brand ?? '-'}</p>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
           {item.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{item.location}</span>}

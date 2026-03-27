@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Save, Plus, Trash2, Pencil, X, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import type { HardwareType } from '@/types/database'
+import type { HardwareType, DepreciationRate } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -332,6 +332,180 @@ function DeviceTypesSettings() {
   )
 }
 
+function RecoveryRateSettings() {
+  const { user } = useAuth()
+  const [rates, setRates] = useState<DepreciationRate[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  const fetchRates = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('depreciation_rates')
+      .eq('user_id', user!.id)
+      .single()
+
+    const stored = data?.depreciation_rates as DepreciationRate[] | null
+    setRates(stored ?? [
+      { from_months: 0, to_months: 12, percentage: 100 },
+      { from_months: 12, to_months: 24, percentage: 75 },
+      { from_months: 24, to_months: 36, percentage: 50 },
+      { from_months: 36, to_months: null, percentage: 0 },
+    ])
+    setLoading(false)
+  }
+
+  if (loading && rates.length === 0) {
+    fetchRates()
+  }
+
+  const addRow = () => {
+    const last = rates[rates.length - 1]
+    const startMonth = last ? (last.to_months ?? last.from_months + 12) : 0
+    setRates([...rates, { from_months: startMonth, to_months: startMonth + 12, percentage: 0 }])
+  }
+
+  const removeRow = (idx: number) => {
+    setRates(rates.filter((_, i) => i !== idx))
+  }
+
+  const updateRow = (idx: number, field: keyof DepreciationRate, value: number | null) => {
+    setRates(rates.map((r, i) => i === idx ? { ...r, [field]: value } : r))
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    setMessage(null)
+
+    // Validate: percentages between 0-100, periods don't overlap
+    for (const r of rates) {
+      if (r.percentage < 0 || r.percentage > 100) {
+        setMessage({ type: 'error', text: 'Percentage moet tussen 0 en 100 liggen.' })
+        setSaving(false)
+        return
+      }
+    }
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ depreciation_rates: rates })
+      .eq('user_id', user!.id)
+
+    setMessage(error
+      ? { type: 'error', text: error.message }
+      : { type: 'success', text: 'Terugvorderingspercentages opgeslagen!' }
+    )
+    setSaving(false)
+  }
+
+  const formatMonths = (m: number) => {
+    const y = Math.floor(m / 12)
+    const rest = m % 12
+    if (y > 0 && rest > 0) return `${y}j ${rest}m`
+    if (y > 0) return `${y} jaar`
+    return `${m} mnd`
+  }
+
+  if (loading) return <p className="text-muted-foreground">Laden...</p>
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Terugvorderingspercentages</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Stel in welk percentage van de aankoopprijs teruggevorderd kan worden op basis van de periode na aanschaf.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="overflow-x-auto rounded-md border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
+                  <th className="px-3 py-2 text-left font-medium">Van (maanden)</th>
+                  <th className="px-3 py-2 text-left font-medium">Tot (maanden)</th>
+                  <th className="px-3 py-2 text-left font-medium">Percentage</th>
+                  <th className="w-10 px-3 py-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {rates.map((rate, idx) => (
+                  <tr key={idx} className="border-b last:border-b-0">
+                    <td className="px-3 py-1.5">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min={0}
+                          className="h-8 w-20"
+                          value={rate.from_months}
+                          onChange={(e) => updateRow(idx, 'from_months', parseInt(e.target.value) || 0)}
+                        />
+                        <span className="text-xs text-muted-foreground">{formatMonths(rate.from_months)}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min={0}
+                          className="h-8 w-20"
+                          value={rate.to_months ?? ''}
+                          placeholder="∞"
+                          onChange={(e) => {
+                            const v = e.target.value
+                            updateRow(idx, 'to_months', v === '' ? null : parseInt(v) || 0)
+                          }}
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          {rate.to_months != null ? formatMonths(rate.to_months) : '∞'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <div className="relative w-24">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          className="h-8 pr-7"
+                          value={rate.percentage}
+                          onChange={(e) => updateRow(idx, 'percentage', parseInt(e.target.value) || 0)}
+                        />
+                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeRow(idx)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Button size="sm" variant="outline" onClick={addRow}>
+              <Plus className="mr-2 h-4 w-4" />Periode toevoegen
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={saving}>
+              <Save className="mr-2 h-4 w-4" />{saving ? 'Opslaan...' : 'Opslaan'}
+            </Button>
+          </div>
+
+          {message && (
+            <p className={`text-sm ${message.type === 'error' ? 'text-destructive' : 'text-green-600'}`}>
+              {message.text}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
 export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -341,12 +515,16 @@ export default function SettingsPage() {
         <TabsList>
           <TabsTrigger value="general">Algemeen</TabsTrigger>
           <TabsTrigger value="devices">Devices</TabsTrigger>
+          <TabsTrigger value="recovery">Terugvordering</TabsTrigger>
         </TabsList>
         <TabsContent value="general" className="mt-4">
           <GeneralSettings />
         </TabsContent>
         <TabsContent value="devices" className="mt-4">
           <DeviceTypesSettings />
+        </TabsContent>
+        <TabsContent value="recovery" className="mt-4">
+          <RecoveryRateSettings />
         </TabsContent>
       </Tabs>
     </div>
