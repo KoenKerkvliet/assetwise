@@ -41,12 +41,13 @@ function getCardBorderClass(item: HardwareWithIncidents) {
   }
 }
 
+const fmt = (v: number) =>
+  new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(v)
+
 function HardwareCard({ item }: { item: HardwareWithIncidents }) {
   const navigate = useNavigate()
   const priceNum = item.price != null ? Number(item.price) : null
-  const price = priceNum != null && !isNaN(priceNum)
-    ? new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(priceNum)
-    : null
+  const hasPrice = priceNum != null && !isNaN(priceNum)
 
   return (
     <Card className={cn('flex flex-col overflow-hidden p-0', getCardBorderClass(item))}>
@@ -71,7 +72,18 @@ function HardwareCard({ item }: { item: HardwareWithIncidents }) {
         <Separator className="mt-auto" />
         <div className="flex items-center justify-between gap-2">
           <p className="truncate text-muted-foreground">S/N: {item.serial_numbers?.join(', ') ?? '-'}</p>
-          {price && <span className="shrink-0 font-medium text-foreground">{price}</span>}
+          {hasPrice && (
+            <span className="shrink-0 whitespace-nowrap font-medium">
+              {item.residualValue != null ? (
+                <>
+                  <span className="text-foreground">{fmt(item.residualValue)}</span>
+                  <span className="text-muted-foreground"> / {fmt(priceNum)}</span>
+                </>
+              ) : (
+                <span className="text-foreground">{fmt(priceNum)}</span>
+              )}
+            </span>
+          )}
         </div>
       </CardContent>
     </Card>
