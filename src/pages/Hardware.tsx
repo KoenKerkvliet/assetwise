@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, MapPin, Calendar, Pencil, Archive, Trash2, CheckSquare, X } from 'lucide-react'
+import { Search, MapPin, Calendar, Pencil, Archive, Trash2, CheckSquare, X, Download } from 'lucide-react'
 import { useHardware, type HardwareWithIncidents } from '@/hooks/useHardware'
 import { supabase } from '@/lib/supabase'
+import { exportHardwarePdf } from '@/lib/exportPdf'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -210,6 +211,18 @@ export default function HardwarePage() {
           onClick={selectMode ? exitSelectMode : () => setSelectMode(true)}
         >
           {selectMode ? <><X className="mr-1 h-4 w-4" /> Annuleren</> : <><CheckSquare className="mr-1 h-4 w-4" /> Selecteren</>}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const items = selectMode && selected.size > 0
+              ? filtered.filter((h) => selected.has(h.id))
+              : filtered
+            exportHardwarePdf(items, selectMode && selected.size > 0 ? 'Hardware selectie' : 'Hardware overzicht')
+          }}
+        >
+          <Download className="mr-1 h-4 w-4" /> PDF
         </Button>
       </div>
 
