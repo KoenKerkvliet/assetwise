@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, Plus, Pencil, Trash2, X, Check, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import type { Hardware, HardwareAction } from '@/types/database'
+import type { Hardware, HardwareAction, FollowUp } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -78,6 +78,10 @@ function IncidentsSection({ hardwareId }: { hardwareId: string }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<IncidentForm>({ ...emptyForm })
+  const [showFollowUpForm, setShowFollowUpForm] = useState<string | null>(null)
+  const [followUpNote, setFollowUpNote] = useState('')
+  const [editingFollowUpId, setEditingFollowUpId] = useState<string | null>(null)
+  const [editingFollowUpNote, setEditingFollowUpNote] = useState('')
 
   const fetchActions = async () => {
     const { data } = await supabase
@@ -98,7 +102,7 @@ function IncidentsSection({ hardwareId }: { hardwareId: string }) {
     if (!newForm.title.trim()) return
     setSaving(true)
 
-    await supabase.from('hardware_actions').insert({
+    const { error } = await supabase.from('hardware_actions').insert({
       hardware_id: hardwareId,
       user_id: user!.id,
       title: newForm.title.trim(),
@@ -109,10 +113,17 @@ function IncidentsSection({ hardwareId }: { hardwareId: string }) {
       status: newForm.status,
     })
 
+    if (error) {
+      console.error('Insert failed:', error)
+      alert('Kon incident niet opslaan: ' + error.message)
+      setSaving(false)
+      return
+    }
+
     setNewForm({ ...emptyForm })
     setShowNew(false)
     setSaving(false)
-    fetchActions()
+    await fetchActions()
   }
 
   const startEdit = (a: HardwareAction) => {
@@ -132,7 +143,7 @@ function IncidentsSection({ hardwareId }: { hardwareId: string }) {
     if (!editingId) return
     setSaving(true)
 
-    await supabase
+    const { error } = await supabase
       .from('hardware_actions')
       .update({
         title: editForm.title.trim(),
@@ -144,16 +155,83 @@ function IncidentsSection({ hardwareId }: { hardwareId: string }) {
       })
       .eq('id', editingId)
 
+    if (error) {
+      console.error('Update failed:', error)
+      alert('Kon incident niet bijwerken: ' + error.message)
+      setSaving(false)
+      return
+    }
+
     setEditingId(null)
     setSaving(false)
-    fetchActions()
+    await fetchActions()
   }
 
   const deleteAction = async (actionId: string) => {
-    await supabase.from('hardware_actions').delete().eq('id', actionId)
+    const { error } = await supabase.from('hardware_actions').delete().eq('id', actionId)
+    if (error) {
+      console.error('Delete failed:', error)
+      alert('Kon incident niet verwijderen: ' + error.message)
+      return
+    }
     if (expandedId === actionId) setExpandedId(null)
     if (editingId === actionId) setEditingId(null)
-    fetchActions()
+    await fetchActions()
+  }
+
+  const addFollowUp = async (actionId: string) => {
+    if (!followUpNote.trim()) return
+    const action = actions.find((a) => a.id === actionId)
+    if (!action) return
+    const existing: FollowUp[] = (action.follow_ups as FollowUp[]) ?? []
+    const newFollowUp: FollowUp = {
+      id: crypto.randomUUID(),
+      note: followUpNote.trim(),
+      created_at: new Date().toISOString(),
+    }
+    const updated = [...existing, newFollowUp]
+    const { error } = await supabase.from('hardware_actions').update({ follow_ups: updated }).eq('id', actionId)
+    if (error) {
+      console.error('Follow-up failed:', error)
+      alert('Kon follow-up niet toevoegen: ' + error.message)
+      return
+    }
+    setFollowUpNote('')
+    setShowFollowUpForm(null)
+    await fetchActions()
+  }
+
+  const saveFollowUp = async (actionId: string, followUpId: string) => {
+    if (!editingFollowUpNote.trim()) return
+    const action = actions.find((a) => a.id === actionId)
+    if (!action) return
+    const existing: FollowUp[] = (action.follow_ups as FollowUp[]) ?? []
+    const updated = existing.map((f) =>
+      f.id === followUpId ? { ...f, note: editingFollowUpNote.trim() } : f
+    )
+    const { error } = await supabase.from('hardware_actions').update({ follow_ups: updated }).eq('id', actionId)
+    if (error) {
+      console.error('Follow-up update failed:', error)
+      alert('Kon follow-up niet bijwerken: ' + error.message)
+      return
+    }
+    setEditingFollowUpId(null)
+    setEditingFollowUpNote('')
+    await fetchActions()
+  }
+
+  const deleteFollowUp = async (actionId: string, followUpId: string) => {
+    const action = actions.find((a) => a.id === actionId)
+    if (!action) return
+    const existing: FollowUp[] = (action.follow_ups as FollowUp[]) ?? []
+    const updated = existing.filter((f) => f.id !== followUpId)
+    const { error } = await supabase.from('hardware_actions').update({ follow_ups: updated.length > 0 ? updated : null }).eq('id', actionId)
+    if (error) {
+      console.error('Follow-up delete failed:', error)
+      alert('Kon follow-up niet verwijderen: ' + error.message)
+      return
+    }
+    await fetchActions()
   }
 
   const formatDate = (d: string) =>
@@ -367,6 +445,81 @@ function IncidentsSection({ hardwareId }: { hardwareId: string }) {
                             Aangemaakt: {formatDate(action.created_at)}
                             {action.updated_at !== action.created_at && ` · Bijgewerkt: ${formatDate(action.updated_at)}`}
                           </p>
+
+                          {/* Follow-ups */}
+                          {(() => {
+                            const followUps: FollowUp[] = (action.follow_ups as FollowUp[]) ?? []
+                            return (
+                              <>
+                                {followUps.length > 0 && (
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-medium text-muted-foreground">Follow-ups</p>
+                                    <div className="space-y-2">
+                                      {followUps.map((fu) => (
+                                        <div key={fu.id} className="rounded border bg-background p-2">
+                                          {editingFollowUpId === fu.id ? (
+                                            <div className="space-y-2">
+                                              <textarea
+                                                className="flex min-h-[40px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                value={editingFollowUpNote}
+                                                onChange={(e) => setEditingFollowUpNote(e.target.value)}
+                                              />
+                                              <div className="flex gap-2">
+                                                <Button size="sm" onClick={() => saveFollowUp(action.id, fu.id)} disabled={!editingFollowUpNote.trim()}>
+                                                  <Check className="mr-1 h-3.5 w-3.5" />Opslaan
+                                                </Button>
+                                                <Button size="sm" variant="ghost" onClick={() => setEditingFollowUpId(null)}>
+                                                  <X className="mr-1 h-3.5 w-3.5" />Annuleren
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <div className="flex items-start justify-between gap-2">
+                                              <div className="min-w-0 flex-1">
+                                                <p className="whitespace-pre-wrap text-sm">{fu.note}</p>
+                                                <p className="mt-1 text-xs text-muted-foreground">{formatDate(fu.created_at)}</p>
+                                              </div>
+                                              <div className="flex shrink-0 gap-1">
+                                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditingFollowUpId(fu.id); setEditingFollowUpNote(fu.note) }}>
+                                                  <Pencil className="h-3 w-3" />
+                                                </Button>
+                                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={() => deleteFollowUp(action.id, fu.id)}>
+                                                  <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {showFollowUpForm === action.id ? (
+                                  <div className="space-y-2">
+                                    <textarea
+                                      className="flex min-h-[40px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                      value={followUpNote}
+                                      onChange={(e) => setFollowUpNote(e.target.value)}
+                                      placeholder="Follow-up notitie..."
+                                    />
+                                    <div className="flex gap-2">
+                                      <Button size="sm" onClick={() => addFollowUp(action.id)} disabled={!followUpNote.trim()}>
+                                        <Plus className="mr-1 h-3.5 w-3.5" />Toevoegen
+                                      </Button>
+                                      <Button size="sm" variant="ghost" onClick={() => { setShowFollowUpForm(null); setFollowUpNote('') }}>
+                                        <X className="mr-1 h-3.5 w-3.5" />Annuleren
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <Button size="sm" variant="outline" onClick={() => setShowFollowUpForm(action.id)}>
+                                    <Plus className="mr-1 h-3.5 w-3.5" />Follow-up toevoegen
+                                  </Button>
+                                )}
+                              </>
+                            )
+                          })()}
 
                           <Separator />
 

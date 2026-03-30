@@ -32,6 +32,12 @@ export interface HardwareType {
   warranty_period: number | null
 }
 
+export interface FollowUp {
+  id: string
+  note: string
+  created_at: string
+}
+
 export interface HardwareAction {
   id: string
   hardware_id: string
@@ -42,7 +48,7 @@ export interface HardwareAction {
   action_type: string
   created_at: string
   updated_at: string
-  follow_ups: unknown | null
+  follow_ups: FollowUp[] | null
   involved: string | null
   status: string
   organization_id: string | null
