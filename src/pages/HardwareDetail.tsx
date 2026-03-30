@@ -68,7 +68,57 @@ const emptyForm: IncidentForm = {
   status: 'open',
 }
 
-function IncidentsSection({ hardwareId }: { hardwareId: string }) {
+const INCIDENT_TO_DEVICE_STATUS: Record<string, string> = {
+  defect: 'retired',
+  reparatie: 'in_repair',
+  storing: 'inactive',
+}
+
+const DEVICE_STATUS_LABELS: Record<string, string> = {
+  active: 'Actief',
+  in_repair: 'In reparatie',
+  inactive: 'Inactief',
+  retired: 'Buiten gebruik',
+}
+
+async function suggestDeviceStatusChange(
+  hardwareId: string,
+  actionType: string,
+  actionStatus: string,
+  currentDeviceStatus: string,
+  onStatusChanged: (newStatus: string) => void,
+) {
+  let suggestedStatus: string | undefined
+
+  if (actionStatus === 'afgehandeld') {
+    if (currentDeviceStatus !== 'active') {
+      suggestedStatus = 'active'
+    }
+  } else {
+    suggestedStatus = INCIDENT_TO_DEVICE_STATUS[actionType]
+  }
+
+  if (!suggestedStatus || suggestedStatus === currentDeviceStatus) return
+
+  const label = DEVICE_STATUS_LABELS[suggestedStatus] ?? suggestedStatus
+  const confirmed = window.confirm(
+    `Wil je de device status wijzigen naar "${label}"?`
+  )
+  if (!confirmed) return
+
+  const { error } = await supabase
+    .from('hardware')
+    .update({ device_status: suggestedStatus })
+    .eq('id', hardwareId)
+
+  if (error) {
+    alert('Kon device status niet bijwerken: ' + error.message)
+  } else {
+    onStatusChanged(suggestedStatus)
+  }
+}
+
+function IncidentsSection({ hardwareId, currentDeviceStatus, onDeviceStatusChanged }: { hardwareId: string; currentDeviceStatus: string; onDeviceStatusChanged: (status: string) => void }) {
   const { user } = useAuth()
   const [actions, setActions] = useState<HardwareAction[]>([])
   const [loading, setLoading] = useState(true)
@@ -124,6 +174,7 @@ function IncidentsSection({ hardwareId }: { hardwareId: string }) {
     setShowNew(false)
     setSaving(false)
     await fetchActions()
+    await suggestDeviceStatusChange(hardwareId, newForm.action_type, newForm.status, currentDeviceStatus, onDeviceStatusChanged)
   }
 
   const startEdit = (a: HardwareAction) => {
@@ -165,6 +216,7 @@ function IncidentsSection({ hardwareId }: { hardwareId: string }) {
     setEditingId(null)
     setSaving(false)
     await fetchActions()
+    await suggestDeviceStatusChange(hardwareId, editForm.action_type, editForm.status, currentDeviceStatus, onDeviceStatusChanged)
   }
 
   const deleteAction = async (actionId: string) => {
@@ -739,7 +791,11 @@ export default function HardwareDetail() {
           error={error}
           success={success}
         />
-        <IncidentsSection hardwareId={item.id} />
+        <IncidentsSection
+          hardwareId={item.id}
+          currentDeviceStatus={item.device_status}
+          onDeviceStatusChanged={(status) => update('device_status', status)}
+        />
       </div>
     </div>
   )
