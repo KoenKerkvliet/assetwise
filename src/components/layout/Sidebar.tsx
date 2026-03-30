@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Monitor, TrendingDown, AlertTriangle, Archive, Trash2, Settings, LogOut, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Monitor, TrendingDown, AlertTriangle, FileText, Archive, Trash2, Settings, LogOut, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
@@ -10,6 +10,7 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/hardware', label: 'Hardware', icon: Monitor },
   { to: '/incidents', label: 'Incidenten', icon: AlertTriangle },
+  { to: '/invoices', label: 'Rekeningen', icon: FileText },
   { to: '/depreciation', label: 'Afschrijvingen', icon: TrendingDown },
 ]
 
