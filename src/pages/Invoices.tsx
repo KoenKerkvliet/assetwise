@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Search, FileText, CheckCircle, Download } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Hardware, Invoice } from '@/types/database'
@@ -20,7 +19,6 @@ const formatDate = (d: string) =>
   })
 
 export default function InvoicesPage() {
-  const navigate = useNavigate()
   const [invoices, setInvoices] = useState<InvoiceWithDevice[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
