@@ -29,6 +29,8 @@ function getCardBorderClass(item: HardwareWithIncidents) {
 
 function getCardBgClass(item: HardwareWithIncidents) {
   switch (item.device_status?.toLowerCase()) {
+    case 'impaired':
+      return 'bg-yellow-50'
     case 'in_repair':
     case 'in reparatie':
     case 'inactive':

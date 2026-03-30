@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 
-const DEVICE_STATUSES = ['active', 'in_repair', 'inactive', 'retired']
+const DEVICE_STATUSES = ['active', 'impaired', 'in_repair', 'inactive', 'retired']
 const ACTION_TYPES = ['storing', 'reparatie', 'melding', 'defect', 'overig']
 const ACTION_STATUSES = ['open', 'in_behandeling', 'afgehandeld']
 
@@ -71,11 +71,12 @@ const emptyForm: IncidentForm = {
 const INCIDENT_TO_DEVICE_STATUS: Record<string, string> = {
   defect: 'retired',
   reparatie: 'in_repair',
-  storing: 'inactive',
+  storing: 'impaired',
 }
 
 const DEVICE_STATUS_LABELS: Record<string, string> = {
   active: 'Actief',
+  impaired: 'Beperkt inzetbaar',
   in_repair: 'In reparatie',
   inactive: 'Inactief',
   retired: 'Buiten gebruik',
