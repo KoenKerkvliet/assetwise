@@ -506,6 +506,126 @@ function RecoveryRateSettings() {
   )
 }
 
+function InvoiceSettings() {
+  const { user } = useAuth()
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [form, setForm] = useState({
+    school_name: '',
+    address: '',
+    postal_code: '',
+    city: '',
+    account_number: '',
+    kvk_number: '',
+  })
+
+  useState(() => {
+    async function load() {
+      const { data } = await supabase
+        .from('profiles')
+        .select('school_name, address, postal_code, city, account_number, kvk_number')
+        .eq('user_id', user!.id)
+        .single()
+
+      if (data) {
+        setForm({
+          school_name: data.school_name ?? '',
+          address: data.address ?? '',
+          postal_code: data.postal_code ?? '',
+          city: data.city ?? '',
+          account_number: data.account_number ?? '',
+          kvk_number: data.kvk_number ?? '',
+        })
+      }
+      setLoading(false)
+    }
+    load()
+  })
+
+  const handleSave = async (e: FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setMessage(null)
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        school_name: form.school_name || null,
+        address: form.address || null,
+        postal_code: form.postal_code || null,
+        city: form.city || null,
+        account_number: form.account_number || null,
+        kvk_number: form.kvk_number || null,
+      })
+      .eq('user_id', user!.id)
+
+    setMessage(error
+      ? { type: 'error', text: error.message }
+      : { type: 'success', text: 'Factuurgegevens opgeslagen!' }
+    )
+    setSaving(false)
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-sm text-muted-foreground">Laden...</CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader><CardTitle>Factuurgegevens</CardTitle></CardHeader>
+      <CardContent>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Deze gegevens worden automatisch ingevuld wanneer je een rekening maakt bij een device.
+        </p>
+        <form onSubmit={handleSave} className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="school_name">Schoolnaam</Label>
+              <Input id="school_name" value={form.school_name} onChange={(e) => setForm({ ...form, school_name: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="address">Adres (straat + huisnummer)</Label>
+              <Input id="address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="postal_code">Postcode</Label>
+              <Input id="postal_code" value={form.postal_code} onChange={(e) => setForm({ ...form, postal_code: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="city">Plaats</Label>
+              <Input id="city" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="account_number">Rekeningnummer (IBAN)</Label>
+              <Input id="account_number" value={form.account_number} onChange={(e) => setForm({ ...form, account_number: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="kvk_number">KvK-nummer</Label>
+              <Input id="kvk_number" value={form.kvk_number} onChange={(e) => setForm({ ...form, kvk_number: e.target.value })} />
+            </div>
+          </div>
+
+          {message && (
+            <p className={`text-sm ${message.type === 'error' ? 'text-destructive' : 'text-green-600'}`}>
+              {message.text}
+            </p>
+          )}
+
+          <Button type="submit" disabled={saving}>
+            <Save className="mr-2 h-4 w-4" />
+            {saving ? 'Opslaan...' : 'Opslaan'}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -516,6 +636,7 @@ export default function SettingsPage() {
           <TabsTrigger value="general">Algemeen</TabsTrigger>
           <TabsTrigger value="devices">Devices</TabsTrigger>
           <TabsTrigger value="recovery">Terugvordering</TabsTrigger>
+          <TabsTrigger value="invoice">Factuurgegevens</TabsTrigger>
         </TabsList>
         <TabsContent value="general" className="mt-4">
           <GeneralSettings />
@@ -525,6 +646,9 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="recovery" className="mt-4">
           <RecoveryRateSettings />
+        </TabsContent>
+        <TabsContent value="invoice" className="mt-4">
+          <InvoiceSettings />
         </TabsContent>
       </Tabs>
     </div>

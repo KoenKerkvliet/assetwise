@@ -149,6 +149,24 @@ export interface Team {
   invoice_number_format: string | null
 }
 
+export interface Invoice {
+  id: string
+  hardware_id: string
+  user_id: string
+  organization_id: string | null
+  school_name: string | null
+  school_address: string | null
+  school_postal_code: string | null
+  school_city: string | null
+  school_iban: string | null
+  school_kvk: string | null
+  recipient_name: string
+  amount: number
+  description: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface TeamMember {
   id: string
   organization_id: string

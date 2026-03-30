@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, Plus, Pencil, Trash2, X, Check, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Save, Plus, Pencil, Trash2, X, Check, ChevronDown, ChevronRight, AlertTriangle, FileText, Download } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import type { Hardware, HardwareAction, FollowUp } from '@/types/database'
+import type { Hardware, HardwareAction, FollowUp, Invoice, HardwareType } from '@/types/database'
+import { exportInvoicePdf } from '@/lib/exportInvoicePdf'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -598,6 +599,240 @@ function IncidentsSection({ hardwareId, currentDeviceStatus, onDeviceStatusChang
   )
 }
 
+const fmt = (v: number) =>
+  new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(v)
+
+function calcResidualValue(
+  price: number | null,
+  purchaseDate: string | null,
+  depreciationMonths: number | null
+): number | null {
+  if (price == null || !purchaseDate || !depreciationMonths || depreciationMonths <= 0) return null
+  const priceNum = Number(price)
+  if (isNaN(priceNum) || priceNum <= 0) return null
+  const purchase = new Date(purchaseDate)
+  const now = new Date()
+  const elapsedMonths = (now.getTime() - purchase.getTime()) / (1000 * 60 * 60 * 24 * 30.4375)
+  if (elapsedMonths <= 0) return priceNum
+  if (elapsedMonths >= depreciationMonths) return 0
+  return Math.round(priceNum * (1 - elapsedMonths / depreciationMonths) * 100) / 100
+}
+
+interface InvoiceForm {
+  school_name: string
+  school_address: string
+  school_postal_code: string
+  school_city: string
+  school_iban: string
+  school_kvk: string
+  recipient_name: string
+  amount: string
+  description: string
+}
+
+function InvoiceSection({ item }: { item: Hardware }) {
+  const { user } = useAuth()
+  const [showDialog, setShowDialog] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [depMonths, setDepMonths] = useState<number | null>(null)
+  const [form, setForm] = useState<InvoiceForm>({
+    school_name: '', school_address: '', school_postal_code: '',
+    school_city: '', school_iban: '', school_kvk: '',
+    recipient_name: '', amount: '', description: '',
+  })
+
+  useEffect(() => {
+    async function load() {
+      const [profileRes, typesRes, invoicesRes] = await Promise.all([
+        supabase.from('profiles').select('school_name, address, postal_code, city, account_number, kvk_number').eq('user_id', user!.id).single(),
+        supabase.from('hardware_types').select('type, depreciation_period'),
+        supabase.from('invoices').select('*').eq('hardware_id', item.id).order('created_at', { ascending: false }),
+      ])
+
+      const typeData = (typesRes.data ?? []) as HardwareType[]
+      const match = typeData.find(t => t.type === item.device_type)
+      setDepMonths(match?.depreciation_period ?? null)
+
+      if (invoicesRes.data) setInvoices(invoicesRes.data)
+
+      if (profileRes.data) {
+        const p = profileRes.data
+        const residual = calcResidualValue(item.price, item.purchase_date, match?.depreciation_period ?? null)
+        setForm(prev => ({
+          ...prev,
+          school_name: p.school_name ?? '',
+          school_address: p.address ?? '',
+          school_postal_code: p.postal_code ?? '',
+          school_city: p.city ?? '',
+          school_iban: p.account_number ?? '',
+          school_kvk: p.kvk_number ?? '',
+          amount: residual != null ? residual.toFixed(2).replace('.', ',') : '',
+          description: `Schade aan ${item.device_type} (${item.asset_id})`,
+        }))
+      }
+    }
+    load()
+  }, [item.id, user])
+
+  const handleSave = async () => {
+    if (!form.recipient_name.trim()) {
+      alert('Vul de naam van de ontvanger in.')
+      return
+    }
+    const amountNum = parseFloat(form.amount.replace(',', '.'))
+    if (isNaN(amountNum) || amountNum <= 0) {
+      alert('Vul een geldig bedrag in.')
+      return
+    }
+
+    setSaving(true)
+    const { data, error } = await supabase.from('invoices').insert({
+      hardware_id: item.id,
+      user_id: user!.id,
+      school_name: form.school_name || null,
+      school_address: form.school_address || null,
+      school_postal_code: form.school_postal_code || null,
+      school_city: form.school_city || null,
+      school_iban: form.school_iban || null,
+      school_kvk: form.school_kvk || null,
+      recipient_name: form.recipient_name.trim(),
+      amount: amountNum,
+      description: form.description || null,
+    }).select().single()
+
+    if (error) {
+      alert('Kon rekening niet opslaan: ' + error.message)
+    } else if (data) {
+      setInvoices(prev => [data, ...prev])
+      setShowDialog(false)
+      setForm(prev => ({ ...prev, recipient_name: '' }))
+    }
+    setSaving(false)
+  }
+
+  const handleDownloadPdf = (invoice: Invoice) => {
+    exportInvoicePdf(invoice, item)
+  }
+
+  const deleteInvoice = async (id: string) => {
+    if (!window.confirm('Weet je zeker dat je deze rekening wilt verwijderen?')) return
+    const { error } = await supabase.from('invoices').delete().eq('id', id)
+    if (error) {
+      alert('Kon rekening niet verwijderen: ' + error.message)
+    } else {
+      setInvoices(prev => prev.filter(i => i.id !== id))
+    }
+  }
+
+  const residual = calcResidualValue(item.price, item.purchase_date, depMonths)
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle>Rekeningen</CardTitle>
+        <Button size="sm" variant="outline" onClick={() => setShowDialog(true)}>
+          <FileText className="mr-2 h-4 w-4" /> Rekening maken
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {residual != null && (
+          <p className="text-xs text-muted-foreground">
+            Restwaarde: <span className="font-medium text-foreground">{fmt(residual)}</span>
+            {item.price != null && <> (aanschaf: {fmt(Number(item.price))})</>}
+          </p>
+        )}
+
+        {invoices.length === 0 && !showDialog && (
+          <p className="py-4 text-center text-sm text-muted-foreground">Geen rekeningen aangemaakt.</p>
+        )}
+
+        {invoices.map(inv => (
+          <div key={inv.id} className="rounded-md border p-3 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="font-medium">{inv.recipient_name}</span>
+              <span className="font-medium">{fmt(inv.amount)}</span>
+            </div>
+            {inv.description && <p className="mt-1 text-xs text-muted-foreground">{inv.description}</p>}
+            <div className="mt-2 flex items-center gap-2">
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleDownloadPdf(inv)}>
+                <Download className="mr-1 h-3 w-3" /> PDF
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => deleteInvoice(inv.id)}>
+                <Trash2 className="mr-1 h-3 w-3" /> Verwijderen
+              </Button>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Aangemaakt: {new Date(inv.created_at).toLocaleDateString('nl-NL')}
+            </p>
+          </div>
+        ))}
+
+        {showDialog && (
+          <div className="space-y-3 rounded-md border bg-muted/20 p-4">
+            <h4 className="text-sm font-semibold">Nieuwe rekening</h4>
+
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-muted-foreground">Afzender (school)</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Schoolnaam</Label>
+                  <Input className="h-8 text-xs" value={form.school_name} onChange={e => setForm({ ...form, school_name: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Adres</Label>
+                  <Input className="h-8 text-xs" value={form.school_address} onChange={e => setForm({ ...form, school_address: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Postcode</Label>
+                  <Input className="h-8 text-xs" value={form.school_postal_code} onChange={e => setForm({ ...form, school_postal_code: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Plaats</Label>
+                  <Input className="h-8 text-xs" value={form.school_city} onChange={e => setForm({ ...form, school_city: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">IBAN</Label>
+                  <Input className="h-8 text-xs" value={form.school_iban} onChange={e => setForm({ ...form, school_iban: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">KvK</Label>
+                  <Input className="h-8 text-xs" value={form.school_kvk} onChange={e => setForm({ ...form, school_kvk: e.target.value })} />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-muted-foreground">Ontvanger & bedrag</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Naam ouder/verzorger *</Label>
+                  <Input className="h-8 text-xs" value={form.recipient_name} onChange={e => setForm({ ...form, recipient_name: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Bedrag</Label>
+                  <Input className="h-8 text-xs" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Omschrijving</Label>
+                <Input className="h-8 text-xs" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleSave} disabled={saving}>
+                {saving ? 'Opslaan...' : 'Opslaan'}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setShowDialog(false)}>Annuleren</Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 function DeviceEditForm({
   item,
   onUpdate,
@@ -792,11 +1027,14 @@ export default function HardwareDetail() {
           error={error}
           success={success}
         />
-        <IncidentsSection
-          hardwareId={item.id}
-          currentDeviceStatus={item.device_status}
-          onDeviceStatusChanged={(status) => update('device_status', status)}
-        />
+        <div className="space-y-4">
+          <IncidentsSection
+            hardwareId={item.id}
+            currentDeviceStatus={item.device_status}
+            onDeviceStatusChanged={(status) => update('device_status', status)}
+          />
+          <InvoiceSection item={item} />
+        </div>
       </div>
     </div>
   )
