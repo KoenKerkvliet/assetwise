@@ -633,7 +633,9 @@ function InvoiceSection({ item }: { item: Hardware }) {
   const [saving, setSaving] = useState(false)
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [depMonths, setDepMonths] = useState<number | null>(null)
-  const [recipientName, setRecipientName] = useState('')
+  const [parentForm, setParentForm] = useState({
+    name: '', address: '', postal_code: '', city: '',
+  })
   const [profileData, setProfileData] = useState<{
     school_name: string; address: string; postal_code: string;
     city: string; account_number: string; kvk_number: string;
@@ -670,7 +672,7 @@ function InvoiceSection({ item }: { item: Hardware }) {
   const residual = calcResidualValue(item.price, item.purchase_date, depMonths)
 
   const handleSave = async () => {
-    if (!recipientName.trim()) {
+    if (!parentForm.name.trim()) {
       alert('Vul de naam van de ontvanger in.')
       return
     }
@@ -693,7 +695,10 @@ function InvoiceSection({ item }: { item: Hardware }) {
       school_city: profileData?.city || null,
       school_iban: profileData?.account_number || null,
       school_kvk: profileData?.kvk_number || null,
-      parent_name: recipientName.trim(),
+      parent_name: parentForm.name.trim(),
+      parent_address: parentForm.address || null,
+      parent_postal_code: parentForm.postal_code || null,
+      parent_city: parentForm.city || null,
       total_amount: residual,
       description,
     }).select().single()
@@ -703,7 +708,7 @@ function InvoiceSection({ item }: { item: Hardware }) {
     } else if (data) {
       setInvoices(prev => [data, ...prev])
       setShowDialog(false)
-      setRecipientName('')
+      setParentForm({ name: '', address: '', postal_code: '', city: '' })
     }
     setSaving(false)
   }
@@ -783,10 +788,25 @@ function InvoiceSection({ item }: { item: Hardware }) {
               </div>
             )}
 
-            <div className="space-y-2">
-              <div className="space-y-1">
-                <Label className="text-xs">Naam ouder/verzorger *</Label>
-                <Input className="h-8 text-xs" value={recipientName} onChange={e => setRecipientName(e.target.value)} placeholder="Naam van de ontvanger" />
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-muted-foreground">Ontvanger (ouder/verzorger)</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Naam *</Label>
+                  <Input className="h-8 text-xs" value={parentForm.name} onChange={e => setParentForm({ ...parentForm, name: e.target.value })} placeholder="Naam ouder/verzorger" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Adres</Label>
+                  <Input className="h-8 text-xs" value={parentForm.address} onChange={e => setParentForm({ ...parentForm, address: e.target.value })} placeholder="Straat + huisnummer" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Postcode</Label>
+                  <Input className="h-8 text-xs" value={parentForm.postal_code} onChange={e => setParentForm({ ...parentForm, postal_code: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Plaats</Label>
+                  <Input className="h-8 text-xs" value={parentForm.city} onChange={e => setParentForm({ ...parentForm, city: e.target.value })} />
+                </div>
               </div>
             </div>
 

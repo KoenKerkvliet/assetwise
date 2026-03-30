@@ -30,10 +30,16 @@ export function exportInvoicePdf(invoice: Invoice, hardware: Hardware) {
   doc.setFont('helvetica', 'bold')
   doc.text('Aan:', pageWidth - 80, 25)
   doc.setFont('helvetica', 'normal')
-  doc.text(invoice.parent_name, pageWidth - 80, 32)
+  let ry = 32
+  doc.text(invoice.parent_name, pageWidth - 80, ry); ry += 5
+  if (invoice.parent_address) { doc.text(invoice.parent_address, pageWidth - 80, ry); ry += 5 }
+  if (invoice.parent_postal_code || invoice.parent_city) {
+    doc.text(`${invoice.parent_postal_code ?? ''} ${invoice.parent_city ?? ''}`.trim(), pageWidth - 80, ry)
+    ry += 5
+  }
 
   // --- Titel ---
-  const titleY = Math.max(y, 45) + 10
+  const titleY = Math.max(y, Math.max(ry, 45)) + 10
   doc.setFontSize(18)
   doc.setFont('helvetica', 'bold')
   doc.text('Rekening', 20, titleY)
