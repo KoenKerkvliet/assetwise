@@ -91,8 +91,10 @@ export function exportInvoicePdf(invoice: Invoice, hardware: Hardware) {
     doc.text('Omschrijving:', 20, detailY)
     doc.setFont('helvetica', 'normal')
     detailY += 6
-    doc.text(invoice.description, 20, detailY)
-    detailY += 6
+    const maxWidth = pageWidth - 40
+    const lines = doc.splitTextToSize(invoice.description, maxWidth)
+    doc.text(lines, 20, detailY)
+    detailY += lines.length * 5
   }
 
   // --- Bedrag ---
@@ -112,9 +114,7 @@ export function exportInvoicePdf(invoice: Invoice, hardware: Hardware) {
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(100)
   if (invoice.school_iban) {
-    doc.text(`Gelieve het bedrag over te maken op ${invoice.school_iban}`, 20, detailY)
-    detailY += 5
-    doc.text(`t.n.v. ${invoice.school_name ?? ''}`, 20, detailY)
+    doc.text(`Gelieve het bedrag over te maken op ${invoice.school_iban} t.n.v. ${invoice.school_name ?? ''}`, 20, detailY)
     detailY += 5
     doc.text(`onder vermelding van betalingskenmerk: ${paymentRef}`, 20, detailY)
   }
