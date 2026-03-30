@@ -24,20 +24,21 @@ function getCardBorderClass(item: HardwareWithIncidents) {
     if (RED_INCIDENT_TYPES.has(item.worstOpenIncidentType)) return 'border-red-500'
     return 'border-orange-500'
   }
+  return ''
+}
+
+function getCardBgClass(item: HardwareWithIncidents) {
   switch (item.device_status?.toLowerCase()) {
-    case 'active':
-    case 'actief':
-      return 'border-green-500'
     case 'in_repair':
     case 'in reparatie':
-      return 'border-orange-500'
     case 'inactive':
     case 'inactief':
+      return 'bg-orange-50'
     case 'retired':
     case 'defect':
-      return 'border-red-500'
+      return 'bg-red-50'
     default:
-      return 'border-green-500'
+      return ''
   }
 }
 
@@ -61,6 +62,7 @@ function HardwareCard({ item, selectMode, selected, onToggle }: HardwareCardProp
       className={cn(
         'flex flex-col overflow-hidden p-0 transition-shadow',
         getCardBorderClass(item),
+        getCardBgClass(item),
         selectMode && 'cursor-pointer',
         selected && 'ring-2 ring-primary shadow-md'
       )}
