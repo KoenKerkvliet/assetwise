@@ -682,7 +682,9 @@ function InvoiceSection({ item }: { item: Hardware }) {
     }
 
     const invoiceNumber = generateInvoiceNumber(invoices)
-    const description = `Verrekening schade ${item.device_type} (${item.asset_id}). Aanschafwaarde: ${fmt(Number(item.price))}. Restwaarde na afschrijving: ${fmt(residual)}.`
+    const serial = item.serial_numbers?.join(', ') ?? ''
+    const paymentRef = `${new Date().getFullYear()}-${serial.replace(/[\s,]+/g, '-') || item.asset_id}`
+    const description = `Verrekening schade ${item.device_type} (${serial || 'onbekend serienummer'}). Aanschafwaarde: ${fmt(Number(item.price))}. Restwaarde na afschrijving: ${fmt(residual)}. Betalingskenmerk: ${paymentRef}.`
 
     setSaving(true)
     const { data, error } = await supabase.from('invoices').insert({

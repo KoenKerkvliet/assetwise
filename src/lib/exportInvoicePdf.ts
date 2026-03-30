@@ -44,15 +44,22 @@ export function exportInvoicePdf(invoice: Invoice, hardware: Hardware) {
   doc.setFont('helvetica', 'bold')
   doc.text('Rekening', 20, titleY)
 
-  // --- Datum ---
+  // --- Datum + betalingskenmerk ---
+  const serial = hardware.serial_numbers?.join(', ') ?? ''
+  const paymentRef = `${new Date(invoice.created_at).getFullYear()}-${serial.replace(/[\s,]+/g, '-') || hardware.asset_id}`
+
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(100)
   doc.text(`Datum: ${new Date(invoice.created_at).toLocaleDateString('nl-NL')}`, 20, titleY + 8)
+  if (invoice.invoice_number) {
+    doc.text(`Factuurnummer: ${invoice.invoice_number}`, pageWidth - 80, titleY + 8)
+  }
+  doc.text(`Betalingskenmerk: ${paymentRef}`, 20, titleY + 14)
   doc.setTextColor(0)
 
   // --- Lijn ---
-  const lineY = titleY + 14
+  const lineY = titleY + 20
   doc.setDrawColor(200)
   doc.line(20, lineY, pageWidth - 20, lineY)
 
@@ -65,7 +72,6 @@ export function exportInvoicePdf(invoice: Invoice, hardware: Hardware) {
   detailY += 7
 
   const details = [
-    ['Asset ID', hardware.asset_id],
     ['Type', hardware.device_type],
     ['Merk', hardware.brand ?? '-'],
     ['Serienummer', hardware.serial_numbers?.join(', ') ?? '-'],
@@ -109,6 +115,8 @@ export function exportInvoicePdf(invoice: Invoice, hardware: Hardware) {
     doc.text(`Gelieve het bedrag over te maken op ${invoice.school_iban}`, 20, detailY)
     detailY += 5
     doc.text(`t.n.v. ${invoice.school_name ?? ''}`, 20, detailY)
+    detailY += 5
+    doc.text(`onder vermelding van betalingskenmerk: ${paymentRef}`, 20, detailY)
   }
 
   // Save
