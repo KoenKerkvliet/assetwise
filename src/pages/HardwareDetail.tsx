@@ -618,16 +618,13 @@ function calcResidualValue(
   return Math.round(priceNum * (1 - elapsedMonths / depreciationMonths) * 100) / 100
 }
 
-interface InvoiceForm {
-  school_name: string
-  school_address: string
-  school_postal_code: string
-  school_city: string
-  school_iban: string
-  school_kvk: string
-  recipient_name: string
-  amount: string
-  description: string
+function generateInvoiceNumber(existingInvoices: Invoice[]) {
+  const year = new Date().getFullYear()
+  const yearInvoices = existingInvoices.filter(i =>
+    i.invoice_number?.startsWith(`RK-${year}`)
+  )
+  const nextNum = yearInvoices.length + 1
+  return `RK-${year}-${String(nextNum).padStart(3, '0')}`
 }
 
 function InvoiceSection({ item }: { item: Hardware }) {
@@ -636,11 +633,11 @@ function InvoiceSection({ item }: { item: Hardware }) {
   const [saving, setSaving] = useState(false)
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [depMonths, setDepMonths] = useState<number | null>(null)
-  const [form, setForm] = useState<InvoiceForm>({
-    school_name: '', school_address: '', school_postal_code: '',
-    school_city: '', school_iban: '', school_kvk: '',
-    recipient_name: '', amount: '', description: '',
-  })
+  const [recipientName, setRecipientName] = useState('')
+  const [profileData, setProfileData] = useState<{
+    school_name: string; address: string; postal_code: string;
+    city: string; account_number: string; kvk_number: string;
+  } | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -657,48 +654,48 @@ function InvoiceSection({ item }: { item: Hardware }) {
       if (invoicesRes.data) setInvoices(invoicesRes.data)
 
       if (profileRes.data) {
-        const p = profileRes.data
-        const residual = calcResidualValue(item.price, item.purchase_date, match?.depreciation_period ?? null)
-        setForm(prev => ({
-          ...prev,
-          school_name: p.school_name ?? '',
-          school_address: p.address ?? '',
-          school_postal_code: p.postal_code ?? '',
-          school_city: p.city ?? '',
-          school_iban: p.account_number ?? '',
-          school_kvk: p.kvk_number ?? '',
-          amount: residual != null ? residual.toFixed(2).replace('.', ',') : '',
-          description: `Schade aan ${item.device_type} (${item.asset_id})`,
-        }))
+        setProfileData({
+          school_name: profileRes.data.school_name ?? '',
+          address: profileRes.data.address ?? '',
+          postal_code: profileRes.data.postal_code ?? '',
+          city: profileRes.data.city ?? '',
+          account_number: profileRes.data.account_number ?? '',
+          kvk_number: profileRes.data.kvk_number ?? '',
+        })
       }
     }
     load()
   }, [item.id, user])
 
+  const residual = calcResidualValue(item.price, item.purchase_date, depMonths)
+
   const handleSave = async () => {
-    if (!form.recipient_name.trim()) {
+    if (!recipientName.trim()) {
       alert('Vul de naam van de ontvanger in.')
       return
     }
-    const amountNum = parseFloat(form.amount.replace(',', '.'))
-    if (isNaN(amountNum) || amountNum <= 0) {
-      alert('Vul een geldig bedrag in.')
+    if (residual == null) {
+      alert('Restwaarde kan niet berekend worden. Controleer de aanschafprijs, aanschafdatum en afschrijvingsperiode.')
       return
     }
+
+    const invoiceNumber = generateInvoiceNumber(invoices)
+    const description = `Verrekening schade ${item.device_type} (${item.asset_id}). Aanschafwaarde: ${fmt(Number(item.price))}. Restwaarde na afschrijving: ${fmt(residual)}.`
 
     setSaving(true)
     const { data, error } = await supabase.from('invoices').insert({
       hardware_id: item.id,
       user_id: user!.id,
-      school_name: form.school_name || null,
-      school_address: form.school_address || null,
-      school_postal_code: form.school_postal_code || null,
-      school_city: form.school_city || null,
-      school_iban: form.school_iban || null,
-      school_kvk: form.school_kvk || null,
-      parent_name: form.recipient_name.trim(),
-      total_amount: amountNum,
-      description: form.description || null,
+      invoice_number: invoiceNumber,
+      school_name: profileData?.school_name || null,
+      school_address: profileData?.address || null,
+      school_postal_code: profileData?.postal_code || null,
+      school_city: profileData?.city || null,
+      school_iban: profileData?.account_number || null,
+      school_kvk: profileData?.kvk_number || null,
+      parent_name: recipientName.trim(),
+      total_amount: residual,
+      description,
     }).select().single()
 
     if (error) {
@@ -706,7 +703,7 @@ function InvoiceSection({ item }: { item: Hardware }) {
     } else if (data) {
       setInvoices(prev => [data, ...prev])
       setShowDialog(false)
-      setForm(prev => ({ ...prev, recipient_name: '' }))
+      setRecipientName('')
     }
     setSaving(false)
   }
@@ -772,57 +769,44 @@ function InvoiceSection({ item }: { item: Hardware }) {
           <div className="space-y-3 rounded-md border bg-muted/20 p-4">
             <h4 className="text-sm font-semibold">Nieuwe rekening</h4>
 
-            <div className="space-y-3">
-              <p className="text-xs font-medium text-muted-foreground">Afzender (school)</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Schoolnaam</Label>
-                  <Input className="h-8 text-xs" value={form.school_name} onChange={e => setForm({ ...form, school_name: e.target.value })} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Adres</Label>
-                  <Input className="h-8 text-xs" value={form.school_address} onChange={e => setForm({ ...form, school_address: e.target.value })} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Postcode</Label>
-                  <Input className="h-8 text-xs" value={form.school_postal_code} onChange={e => setForm({ ...form, school_postal_code: e.target.value })} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Plaats</Label>
-                  <Input className="h-8 text-xs" value={form.school_city} onChange={e => setForm({ ...form, school_city: e.target.value })} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">IBAN</Label>
-                  <Input className="h-8 text-xs" value={form.school_iban} onChange={e => setForm({ ...form, school_iban: e.target.value })} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">KvK</Label>
-                  <Input className="h-8 text-xs" value={form.school_kvk} onChange={e => setForm({ ...form, school_kvk: e.target.value })} />
-                </div>
+            {profileData && (
+              <div className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
+                <p className="mb-1 font-medium text-foreground">Afzender</p>
+                <p>{profileData.school_name || <span className="italic">Geen schoolnaam ingesteld</span>}</p>
+                {profileData.address && <p>{profileData.address}</p>}
+                {(profileData.postal_code || profileData.city) && (
+                  <p>{profileData.postal_code} {profileData.city}</p>
+                )}
+                {profileData.account_number && <p>IBAN: {profileData.account_number}</p>}
+                {profileData.kvk_number && <p>KvK: {profileData.kvk_number}</p>}
+                {!profileData.school_name && (
+                  <p className="mt-1 text-amber-600">Stel je factuurgegevens in via Instellingen → Factuurgegevens</p>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Naam ouder/verzorger *</Label>
+                <Input className="h-8 text-xs" value={recipientName} onChange={e => setRecipientName(e.target.value)} placeholder="Naam van de ontvanger" />
               </div>
             </div>
 
-            <div className="space-y-3">
-              <p className="text-xs font-medium text-muted-foreground">Ontvanger & bedrag</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Naam ouder/verzorger *</Label>
-                  <Input className="h-8 text-xs" value={form.recipient_name} onChange={e => setForm({ ...form, recipient_name: e.target.value })} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Bedrag</Label>
-                  <Input className="h-8 text-xs" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
-                </div>
+            <div className="rounded-md bg-muted/40 p-3 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Te betalen (restwaarde):</span>
+                <span className="font-semibold">{residual != null ? fmt(residual) : 'Niet beschikbaar'}</span>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Omschrijving</Label>
-                <Input className="h-8 text-xs" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-              </div>
+              {item.price != null && residual != null && (
+                <p className="mt-1 text-muted-foreground">
+                  Aanschafprijs {fmt(Number(item.price))} minus afschrijving
+                </p>
+              )}
             </div>
 
             <div className="flex gap-2">
-              <Button size="sm" onClick={handleSave} disabled={saving}>
-                {saving ? 'Opslaan...' : 'Opslaan'}
+              <Button size="sm" onClick={handleSave} disabled={saving || residual == null}>
+                {saving ? 'Opslaan...' : 'Opslaan & rekening aanmaken'}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setShowDialog(false)}>Annuleren</Button>
             </div>
