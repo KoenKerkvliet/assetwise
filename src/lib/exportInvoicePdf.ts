@@ -30,7 +30,7 @@ export function exportInvoicePdf(invoice: Invoice, hardware: Hardware) {
   doc.setFont('helvetica', 'bold')
   doc.text('Aan:', pageWidth - 80, 25)
   doc.setFont('helvetica', 'normal')
-  doc.text(invoice.recipient_name, pageWidth - 80, 32)
+  doc.text(invoice.parent_name, pageWidth - 80, 32)
 
   // --- Titel ---
   const titleY = Math.max(y, 45) + 10
@@ -92,7 +92,7 @@ export function exportInvoicePdf(invoice: Invoice, hardware: Hardware) {
   doc.setFontSize(13)
   doc.setFont('helvetica', 'bold')
   doc.text('Te betalen:', 20, detailY)
-  doc.text(fmt(invoice.amount), pageWidth - 20, detailY, { align: 'right' })
+  doc.text(fmt(invoice.total_amount), pageWidth - 20, detailY, { align: 'right' })
 
   // --- Betaalinstructie ---
   detailY += 12
@@ -106,6 +106,6 @@ export function exportInvoicePdf(invoice: Invoice, hardware: Hardware) {
   }
 
   // Save
-  const filename = `rekening-${hardware.asset_id}-${invoice.recipient_name.replace(/\s+/g, '-').toLowerCase()}.pdf`
+  const filename = `rekening-${hardware.asset_id}-${invoice.parent_name.replace(/\s+/g, '-').toLowerCase()}.pdf`
   doc.save(filename)
 }

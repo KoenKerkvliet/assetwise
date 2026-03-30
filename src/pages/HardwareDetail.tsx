@@ -696,8 +696,8 @@ function InvoiceSection({ item }: { item: Hardware }) {
       school_city: form.school_city || null,
       school_iban: form.school_iban || null,
       school_kvk: form.school_kvk || null,
-      recipient_name: form.recipient_name.trim(),
-      amount: amountNum,
+      parent_name: form.recipient_name.trim(),
+      total_amount: amountNum,
       description: form.description || null,
     }).select().single()
 
@@ -750,8 +750,8 @@ function InvoiceSection({ item }: { item: Hardware }) {
         {invoices.map(inv => (
           <div key={inv.id} className="rounded-md border p-3 text-sm">
             <div className="flex items-center justify-between">
-              <span className="font-medium">{inv.recipient_name}</span>
-              <span className="font-medium">{fmt(inv.amount)}</span>
+              <span className="font-medium">{inv.parent_name}</span>
+              <span className="font-medium">{fmt(inv.total_amount)}</span>
             </div>
             {inv.description && <p className="mt-1 text-xs text-muted-foreground">{inv.description}</p>}
             <div className="mt-2 flex items-center gap-2">

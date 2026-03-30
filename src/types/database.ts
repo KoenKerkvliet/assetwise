@@ -154,15 +154,21 @@ export interface Invoice {
   hardware_id: string
   user_id: string
   organization_id: string | null
+  team_id: string | null
+  invoice_number: string | null
   school_name: string | null
   school_address: string | null
   school_postal_code: string | null
   school_city: string | null
   school_iban: string | null
   school_kvk: string | null
-  recipient_name: string
-  amount: number
+  parent_name: string
+  parent_address: string | null
+  parent_postal_code: string | null
+  parent_city: string | null
+  total_amount: number
   description: string | null
+  status: string | null
   created_at: string
   updated_at: string
 }
